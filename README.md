@@ -390,7 +390,6 @@ usable evidence. See `evaluation/golden/LABELING.md` for the labeling policy.
 - Add numeric consistency checks for ages, percentages, and policy thresholds
 - Improve comparison-specific clause selection and evidence balancing
 - Expand the golden dataset with independently reviewed labels
-- Add automated backend and frontend test suites to CI
 - Add authentication, observability, and deployment infrastructure
 - Support OCR fallback for scanned brochures and richer table extraction
 
