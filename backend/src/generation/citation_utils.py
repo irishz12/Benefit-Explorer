@@ -14,6 +14,11 @@ from src.retrieval.models import HybridResult
 
 _INLINE_CITATION = re.compile(r"\[(\d+)]")
 _FUZZY_MATCH_THRESHOLD = 0.82
+_BULLET_MARKER = re.compile(r"^[•●▪◦–—-]\s*")
+_PAGE_NUMBER = re.compile(r"^\d{1,3}$")
+_SECTION_HEADING = re.compile(
+    r"^(?:\d+(?:\.\d+)*\.?\s+)?[A-Z][A-Za-z0-9 &'()@/+\-]{2,60}:?$"
+)
 _QUOTE_TRANSLATION = str.maketrans(
     {
         "\u00a0": " ",
@@ -257,7 +262,7 @@ def parse_and_verify_answer(
             continue
 
         canonical_support = _best_supporting_sentence(
-            _claim_for_index(answer, index),
+            supporting_text,
             record.text,
         )
         verified.append(
@@ -375,23 +380,49 @@ def _claim_for_index(answer: str, index: int) -> str:
     return _INLINE_CITATION.sub("", answer).strip()
 
 
+def _citation_passages(chunk_text: str) -> list[str]:
+    """Reconstruct readable source clauses from PDF-wrapped chunk text.
+
+    PDF extraction commonly inserts a newline (and sometimes a blank line)
+    after every visual line. Treating those newlines as sentence boundaries
+    produces source-card fragments such as ``"till the end ..."``. This
+    routine removes standalone page numbers and short section headings, joins
+    wrapped lines, and then splits only at punctuation or real bullet markers.
+    """
+
+    lines: list[str] = []
+    for raw_line in chunk_text.splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if not line or _PAGE_NUMBER.fullmatch(line):
+            continue
+        word_count = len(line.split())
+        if (
+            word_count <= 8
+            and _SECTION_HEADING.fullmatch(line)
+            and not re.search(r"[.!?]$", line)
+            and not _BULLET_MARKER.match(line)
+        ):
+            continue
+        lines.append(line)
+
+    collapsed = " ".join(lines).strip()
+    if not collapsed:
+        return []
+    passages = re.split(
+        r"(?<=[.!?])\s+|\s+(?=[•●▪◦–—-]\s*)",
+        collapsed,
+    )
+    return [
+        _BULLET_MARKER.sub("", passage).strip()
+        for passage in passages
+        if len(_BULLET_MARKER.sub("", passage).strip()) >= 5
+    ]
+
+
 def _best_supporting_sentence(claim: str, chunk_text: str) -> str:
     """Select an exact chunk sentence most lexically related to a cited claim."""
 
-    sentences = [
-        re.sub(r"\s+", " ", sentence).strip()
-        for sentence in re.split(r"(?<=[.!?])\s+|\n+", chunk_text)
-        if len(sentence.strip()) >= 5
-    ]
-    # Brochure PDFs often wrap one bullet over several blank lines. Add compact
-    # sliding excerpts so source cards do not end with fragments such as "on".
-    words = re.sub(r"\s+", " ", chunk_text).strip().split()
-    window_size = 36
-    if len(words) > window_size:
-        sentences.extend(
-            " ".join(words[start : start + window_size])
-            for start in range(0, len(words) - window_size + 1, 12)
-        )
+    sentences = _citation_passages(chunk_text)
     if not sentences:
         return re.sub(r"\s+", " ", chunk_text).strip()
     claim_tokens = set(re.findall(r"[a-z0-9]+", _normalize(claim)))

@@ -1,5 +1,10 @@
 # BenefitExplorer
 
+[![CI](https://github.com/rishikesh0012/Benefit-Explorer/actions/workflows/ci.yml/badge.svg)](https://github.com/rishikesh0012/Benefit-Explorer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+
 > Insurance answers grounded in product brochures.
 
 BenefitExplorer is a full-stack retrieval-augmented generation (RAG) system
@@ -12,6 +17,27 @@ This repository is a portfolio and research project. It is not financial,
 insurance, or legal advice. Product terms must always be verified against the
 latest official policy documents.
 
+## UI preview
+
+### 1. Fresh landing page
+
+![BenefitExplorer desktop chat interface](docs/screenshots/benefitexplorer-home.jpg)
+
+### 2. Simple product question
+
+The following response was generated through the live FastAPI RAG pipeline. It
+shows the inline citation, matched product, brochure page, supporting clause,
+and stable chunk identifier rendered by the frontend.
+
+![BenefitExplorer TULIP maturity answer with an expanded verified source](docs/screenshots/benefitexplorer-tulip-answer.jpg)
+
+### 3. Multi-product comparison
+
+This larger query demonstrates product-balanced retrieval and separate cited
+evidence for Kotak EDGE and Kotak TULIP.
+
+![BenefitExplorer EDGE and TULIP maturity comparison with two verified sources](docs/screenshots/benefitexplorer-comparison-answer.jpg)
+
 ## Problem statement
 
 Insurance brochures are long, terminology-heavy, and difficult to compare.
@@ -19,6 +45,15 @@ Important details such as eligibility limits, waiting periods, exclusions,
 surrender rules, and benefit calculations may be spread across multiple pages.
 BenefitExplorer turns those documents into a searchable, citation-backed
 knowledge assistant while preserving page-level provenance.
+
+## Why this project
+
+Insurance customers should not need to search dozens of brochure pages to
+understand a benefit or compare two products. The difficult part is not simply
+finding a matching paragraph: the system must preserve clause-level meaning,
+balance evidence across products, and attach every major claim to verifiable
+source text. BenefitExplorer demonstrates an end-to-end approach to that
+grounding problem, from document ingestion through citation validation.
 
 ## Key features
 
@@ -39,27 +74,61 @@ knowledge assistant while preserving page-level provenance.
 
 ```mermaid
 flowchart LR
-    A["Insurance brochure PDFs"] --> B["Page-aware extraction"]
-    B --> C["Clause-aware chunks"]
-    C --> D["BGE-M3 embeddings"]
-    C --> E["BM25 index"]
-    D --> F["Persistent Chroma store"]
-
-    Q["Customer question"] --> P["Product and intent detection"]
-    P --> F
-    P --> E
-    F --> H["Hybrid retrieval and RRF"]
-    E --> H
-    H --> R["BGE cross-encoder reranking"]
-    R --> G["Bedrock Mantle generation"]
-    G --> V["Citation validation"]
-    V --> U["Next.js answer and source panel"]
+    A["PDF ingestion<br/>PyMuPDF + pdfplumber"] --> B["Clause-aware chunking<br/>page metadata + stable IDs"]
+    B --> C["Hybrid retrieval<br/>BGE-M3 + Chroma + BM25 + RRF"]
+    Q["Customer question"] --> D["Product and intent detection"]
+    D --> C
+    C --> E["Multi-signal reranking<br/>cross-encoder + intent + exact phrase"]
+    E --> F["Grounded generation<br/>Qwen3 32B via Bedrock Mantle"]
+    F --> G["Citation verification<br/>chunk identity + supporting text"]
+    G --> H["Streaming chat UI<br/>inline citations + source cards"]
 ```
 
 The production pipeline retrieves up to 40 candidates and dynamically selects
 at most four final context chunks. Comparison queries reserve evidence for each
 detected product. The generator receives full chunks so citations can be
 validated and rendered with product and page metadata.
+
+## Example questions and grounded answers
+
+These examples are adapted from the manually labeled golden dataset. Citation
+numbers represent the source cards returned by the application.
+
+### 1. Income timing
+
+**Question:** How soon can Kotak EDGE start paying me Guaranteed Income?
+
+**Answer:** Guaranteed Income can start from the 13th policy monthiversary,
+after the selected deferment period. The first payment requires the premium due
+on the first policy anniversary to be paid and the policy to remain in force
+[1].
+
+**Source:** [1] Kotak EDGE, page 2 — `chunk_643b8e82237436dc72a94ff2`
+
+### 2. Early liquidity restriction
+
+**Question:** Can I get money out of Kotak TULIP during the first five policy
+years?
+
+**Answer:** Partial withdrawals are not available during the five-year lock-in
+period [1]. A surrender request may be made during that period, but the
+applicable discontinued-policy proceeds are paid only after the lock-in ends
+[2].
+
+**Sources:** [1] Kotak TULIP, page 27 — `chunk_b6101535d5e4025a10adbe58`;
+[2] Kotak TULIP, page 30 — `chunk_a387fa0f7b1edb274e7ba324`.
+
+### 3. Cross-product maturity comparison
+
+**Question:** How do the maturity benefits of Kotak EDGE and Kotak TULIP differ?
+
+**Answer:** Kotak EDGE pays the Sum Assured on Maturity plus any accumulated
+Guaranteed Income under the accrual option [1]. Kotak TULIP instead pays the
+Main Account and Top-Up Account Fund Value, including Loyalty Additions when
+the policy is in force and all premiums are current [2].
+
+**Sources:** [1] Kotak EDGE, page 6 — `chunk_592b0cfbc041bce3cad226c3`;
+[2] Kotak TULIP, page 13 — `chunk_09716cf6631348d73260b980`.
 
 ## Tech stack
 
@@ -125,7 +194,7 @@ can be inspected without redistributing brochure content.
 ## Project structure
 
 ```text
-Insurance-Product-RAG/
+Benefit-Explorer/
 ├── backend/
 │   ├── data/                         # Ignored local PDFs plus sanitized fixtures
 │   ├── src/
@@ -148,6 +217,8 @@ Insurance-Product-RAG/
 │   ├── results/                      # Generated JSON and CSV results
 │   ├── reports/                      # Generated Markdown summaries
 │   └── run_evaluation.py
+├── docs/
+│   └── screenshots/                  # Portfolio screenshots or demo GIF
 ├── .gitignore
 └── README.md
 ```
@@ -168,8 +239,8 @@ reranking can load locally with `RAG_OFFLINE=true`.
 ### 1. Install the backend
 
 ```bash
-git clone <your-repository-url>
-cd Insurance-Product-RAG/backend
+git clone https://github.com/rishikesh0012/Benefit-Explorer.git
+cd Benefit-Explorer/backend
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -221,7 +292,7 @@ curl http://127.0.0.1:8000/health
 From a second terminal:
 
 ```bash
-cd Insurance-Product-RAG/frontend
+cd Benefit-Explorer/frontend
 npm install
 cp .env.example .env.local
 npm run dev
@@ -304,12 +375,22 @@ usable evidence. See `evaluation/golden/LABELING.md` for the labeling policy.
 ## Limitations
 
 - Answers are limited to the indexed brochure versions and may not reflect later product changes.
+- The system has no live policy-account, underwriting, claims, or insurer-system integration.
 - OCR and complex PDF tables can introduce extraction or chunk-boundary errors.
+- Multi-part and cross-product questions can receive incomplete answers when one clause is not retrieved.
 - Context Recall@4 depends on manually maintained evidence-group labels.
 - RAGAS metrics use a model judge and may vary across judge models or provider versions.
 - Answer Correctness remains the weakest measured metric, especially for multi-part questions.
 - The first local request can be slow while embedding and reranking models load.
 - This application does not replace policy contracts or professional advice.
+
+## Naive RAG baseline
+
+A controlled baseline comparison is planned but has not yet been published. A
+future experiment will compare the current hybrid, product-aware, multi-signal
+pipeline against a naive dense-retrieval baseline using the same golden set,
+generation model, context limit, and evaluation protocol. No baseline result is
+claimed until that experiment is reproducibly run.
 
 ## Future improvements
 
@@ -327,6 +408,12 @@ usable evidence. See `evaluation/golden/LABELING.md` for the labeling policy.
 - The frontend never accepts or stores provider credentials.
 - Raw PDFs, derived chunks, Chroma indexes, model caches, and generated reports are ignored.
 - Review brochure redistribution rights before publishing any source document.
+
+## Suggested GitHub topics
+
+`rag` · `llm` · `insurance` · `retrieval-augmented-generation` · `fastapi` ·
+`nextjs` · `hybrid-retrieval` · `reranking` · `chromadb` · `sentence-transformers`
+· `ragas` · `citations`
 
 ## License
 

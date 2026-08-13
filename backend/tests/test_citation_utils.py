@@ -72,3 +72,56 @@ def test_does_not_resolve_supporting_text_against_another_context() -> None:
     payload = _payload(chunk_id="chunk_other", page=1)
     with pytest.raises(CitationValidationError, match="declared context"):
         parse_and_verify_answer(payload, [first, second])
+
+
+def test_reconstructs_complete_sentence_from_pdf_wrapped_lines() -> None:
+    wrapped_text = """Policy Benefits
+
+2. Maturity Benefit
+
+On survival of Life Insured till the end of the policy term provided all
+
+the premiums are paid up to date and the policy is in force, Fund
+
+Value (Main Account + Top up Account, if any) inclusive of Loyalty
+
+Additions shall be payable.
+
+14
+
+Fund Value is payable for a reduced paid-up policy."""
+    record = ChunkRecord(
+        chunk_id="chunk_tulip_maturity",
+        product_name="Kotak TULIP",
+        page_number=14,
+        page_numbers=(14,),
+        section_type="Benefits",
+        section_types=("Benefits",),
+        source_file="tulip.pdf",
+        text=wrapped_text,
+    )
+    context = HybridResult(record, 1.0, None, None, None, None)
+    full_sentence = (
+        "On survival of Life Insured till the end of the policy term provided all "
+        "the premiums are paid up to date and the policy is in force, Fund Value "
+        "(Main Account + Top up Account, if any) inclusive of Loyalty Additions "
+        "shall be payable."
+    )
+    payload = {
+        "answer": "Kotak TULIP pays its fund value at maturity [1].",
+        "citations": [
+            {
+                "index": 1,
+                "chunk_id": "chunk_tulip_maturity",
+                "product": "Kotak TULIP",
+                "page": 14,
+                "supporting_text": full_sentence,
+            }
+        ],
+    }
+
+    answer = parse_and_verify_answer(payload, [context])
+
+    assert answer.citations[0].supporting_text == full_sentence
+    assert answer.citations[0].supporting_text.startswith("On survival")
+    assert answer.citations[0].supporting_text.endswith("shall be payable.")
