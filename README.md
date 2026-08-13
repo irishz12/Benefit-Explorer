@@ -1,6 +1,6 @@
 # BenefitExplorer
 
-[![CI](https://github.com/rishikesh0012/Benefit-Explorer/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rishikesh0012/Benefit-Explorer/actions/workflows/ci.yml?query=branch%3Amain)
+[![CI](https://github.com/irishz12/Benefit-Explorer/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/irishz12/Benefit-Explorer/actions/workflows/ci.yml?query=branch%3Amain)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -239,7 +239,7 @@ reranking can load locally with `RAG_OFFLINE=true`.
 ### 1. Install the backend
 
 ```bash
-git clone https://github.com/rishikesh0012/Benefit-Explorer.git
+git clone https://github.com/irishz12/Benefit-Explorer.git
 cd Benefit-Explorer/backend
 
 python3 -m venv .venv
