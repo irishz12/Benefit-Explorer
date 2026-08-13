@@ -1,0 +1,342 @@
+[
+  {
+    "question_id": "Q001",
+    "product": "Kotak EDGE",
+    "question_type": "Simple Factual",
+    "question": "How soon can Kotak EDGE start paying me Guaranteed Income?",
+    "reference_answer": "Kotak EDGE can start Guaranteed Income from the 13th policy monthiversary, after the selected deferment period. The first payment is subject to the premium due on the first policy anniversary being paid and the policy being in force.",
+    "relevant_chunk_ids": [
+      "chunk_643b8e82237436dc72a94ff2",
+      "chunk_58b0d1b6aded40a29880ee0c"
+    ]
+  },
+  {
+    "question_id": "Q002",
+    "product": "Kotak EDGE",
+    "question_type": "Eligibility / Conditions",
+    "question": "Can I buy Kotak EDGE for my young child, and what is the maximum entry age?",
+    "reference_answer": "The entry age for Kotak EDGE ranges from 91 days to 55 years. For a minor, risk cover starts from the policy commencement date and the policy vests in the child at age 18.",
+    "relevant_chunk_ids": [
+      "chunk_ac023739bcbbeaf38b7a95bc"
+    ]
+  },
+  {
+    "question_id": "Q003",
+    "product": "Kotak EDGE",
+    "question_type": "Exclusions / Limitations",
+    "question": "What does Kotak EDGE pay if the life insured dies by suicide within the first 12 months?",
+    "reference_answer": "If suicide occurs within 12 months from the start of risk, the policy pays the higher of 80% of total premiums paid or the surrender value available on the date of death, provided the policy is in force.",
+    "relevant_chunk_ids": [
+      "chunk_c5f170a87c9a0b893a91e231"
+    ]
+  },
+  {
+    "question_id": "Q004",
+    "product": "Kotak EDGE",
+    "question_type": "Benefits / Coverage",
+    "question": "What will I receive when my Kotak EDGE policy matures?",
+    "reference_answer": "If the life insured survives to the end of the policy term and the policy is in force, the maturity benefit is the Sum Assured on Maturity plus any accumulated Guaranteed Income under the accrual option. The Sum Assured on Maturity equals the annualized premium multiplied by the premium payment term.",
+    "relevant_chunk_ids": [
+      "chunk_592b0cfbc041bce3cad226c3",
+      "chunk_643b8e82237436dc72a94ff2",
+      "chunk_58b0d1b6aded40a29880ee0c",
+      "chunk_38012b10f48093ce13b6d385"
+    ]
+  },
+  {
+    "question_id": "Q005",
+    "product": "Kotak EDGE",
+    "question_type": "Comparison / Unique Feature",
+    "question": "What is special about the Insta Cashback feature in Kotak EDGE?",
+    "reference_answer": "Under Insta Income, you can choose an Insta Cashback equal to 20%, 30%, or 50% of the annualized premium. It is paid within seven working days from the policy issuance date, and the selected option cannot be changed during the policy term.",
+    "relevant_chunk_ids": [
+      "chunk_643b8e82237436dc72a94ff2",
+      "chunk_58b0d1b6aded40a29880ee0c"
+    ]
+  },
+  {
+    "question_id": "Q006",
+    "product": "Kotak TULIP",
+    "question_type": "Simple Factual",
+    "question": "What investment strategies are available in Kotak TULIP?",
+    "reference_answer": "Kotak TULIP offers two investment strategies: Self Managed Strategy and Age Based Strategy.",
+    "relevant_chunk_ids": [
+      "chunk_3527308c6f9b8212b0cb49c4"
+    ]
+  },
+  {
+    "question_id": "Q007",
+    "product": "Kotak TULIP",
+    "question_type": "Eligibility / Conditions",
+    "question": "I am 58 years old. Am I within the entry-age limit for Kotak TULIP?",
+    "reference_answer": "Yes. Kotak TULIP allows entry from age 18 through age 60, measured on the last birthday. Its policy term ranges from 30 to 40 years, and the permitted maturity age is 48 to 100 years.",
+    "relevant_chunk_ids": [
+      "chunk_7bc2b289821de62017883c4c"
+    ]
+  },
+  {
+    "question_id": "Q008",
+    "product": "Kotak TULIP",
+    "question_type": "Exclusions / Limitations",
+    "question": "Can I get money out of Kotak TULIP during the first five policy years?",
+    "reference_answer": "Kotak TULIP does not provide liquidity through partial withdrawals during its five-year lock-in period. You may request surrender during the lock-in period, but the applicable discontinued-policy proceeds are paid only after the lock-in period ends.",
+    "relevant_chunk_ids": [
+      "chunk_3527308c6f9b8212b0cb49c4",
+      "chunk_7bc2b289821de62017883c4c",
+      "chunk_b6101535d5e4025a10adbe58",
+      "chunk_a387fa0f7b1edb274e7ba324",
+      "chunk_ae5423681f97f0e1e399756b",
+      "chunk_dcd8a18784d99d51a9066de9"
+    ]
+  },
+  {
+    "question_id": "Q009",
+    "product": "Kotak TULIP",
+    "question_type": "Benefits / Coverage",
+    "question": "What maturity benefit does Kotak TULIP pay if my policy is in force?",
+    "reference_answer": "If all premiums are up to date and the policy is in force at maturity, Kotak TULIP pays the Fund Value of the Main Account and any Top-Up Account, including Loyalty Additions. A reduced paid-up policy receives only the Fund Value and does not receive Loyalty Additions.",
+    "relevant_chunk_ids": [
+      "chunk_09716cf6631348d73260b980",
+      "chunk_7bc2b289821de62017883c4c"
+    ]
+  },
+  {
+    "question_id": "Q011",
+    "product": "Kotak Gen2Gen Protect",
+    "question_type": "Simple Factual",
+    "question": "Which optional riders can I add to Kotak Gen2Gen Protect?",
+    "reference_answer": "The brochure lists three optional riders: Kotak Permanent Disability Benefit Rider, Kotak Critical Illness Plus Benefit Rider, and Kotak Accidental Death Benefit Rider. They require an additional premium.",
+    "relevant_chunk_ids": [
+      "chunk_704fed6e150aa2a6c708737f",
+      "chunk_834598a8dff581acdc9c301f"
+    ]
+  },
+  {
+    "question_id": "Q012",
+    "product": "Kotak Gen2Gen Protect",
+    "question_type": "Eligibility / Conditions",
+    "question": "What age conditions apply if I want the Legacy ROP option for myself and my child?",
+    "reference_answer": "For Legacy ROP, the primary life insured must be at least 18. The maximum primary entry age is 45 for maturity at 60 or 50 for maturity at 65; the child must be between 3 months and 17 years old, with at least an 18-year age gap between the two lives.",
+    "relevant_chunk_ids": [
+      "chunk_3429f4dcec54b40e4af3b3ce",
+      "chunk_1d5c2cfe8b747077b52115d5"
+    ]
+  },
+  {
+    "question_id": "Q013",
+    "product": "Kotak Gen2Gen Protect",
+    "question_type": "Exclusions / Limitations",
+    "question": "How much can I borrow against my Kotak Gen2Gen Protect policy?",
+    "reference_answer": "The minimum policy loan is ₹10,000, and the maximum is 25% of the policy's surrender value. Any outstanding loan and interest may be deducted from a maturity, death, survival, or other benefit payment.",
+    "relevant_chunk_ids": [
+      "chunk_7397397b4639c56bb5a6cdd6"
+    ]
+  },
+  {
+    "question_id": "Q015",
+    "product": "Kotak Gen2Gen Protect",
+    "question_type": "Comparison / Unique Feature",
+    "question": "How does the Legacy ROP option protect my child after my policy term ends?",
+    "reference_answer": "Legacy ROP covers the parent during the policy term and the named child during the extended policy term. If the parent survives to the selected maturity age of 60 or 65, the Sum Assured on Maturity is paid and the parent's life cover ends.\n\nThe Basic Sum Assured then transfers to the child, provided the child is alive, and covers the child until age 60. Only one child can be covered, and no survival benefit is payable if the child survives to the end of the extended policy term.",
+    "relevant_chunk_ids": [
+      "chunk_2f44a3492cd4b980a88d78ec",
+      "chunk_704fed6e150aa2a6c708737f"
+    ]
+  },
+  {
+    "question_id": "Q016",
+    "product": "Kotak Fortune Maximiser",
+    "question_type": "Simple Factual",
+    "question": "How can bonuses be paid under Kotak Fortune Maximiser?",
+    "reference_answer": "The brochure offers Cash Bonus as an immediate payout, Cash Bonus as a deferred payout, or Paid-Up Additions. Deferred Cash Bonus is not available with Bright Future Maximiser or Golden Years Maximiser.",
+      "relevant_chunk_ids": [
+        "chunk_e120c7f05434b74e07a516ae",
+        "chunk_fa004d8e1537d10c885bc72c",
+        "chunk_18af2dc7dd802cdf8f6460ac",
+        "chunk_63b4a7ec2ffe2822d229699c",
+        "chunk_d6f71cb5b9cf7e142f140e74"
+    ]
+  },
+  {
+    "question_id": "Q017",
+    "product": "Kotak Fortune Maximiser",
+    "question_type": "Eligibility / Conditions",
+    "question": "Can Kotak Fortune Maximiser cover a baby, and what is the maximum entry age?",
+    "reference_answer": "The minimum entry age is 90 days. The maximum entry age is 50 years for 6-pay and 15-pay terms, and 55 years for 8-pay, 10-pay, and 12-pay terms.",
+    "relevant_chunk_ids": [
+      "chunk_062f5972a8aa79e5d70d1ef1",
+      "chunk_f6c8ede52225a8bcf2ffdef3"
+    ]
+  },
+  {
+    "question_id": "Q021",
+    "product": "Kotak GAIN",
+    "question_type": "Simple Factual",
+    "question": "How soon can Kotak GAIN start paying income, and what does that income include?",
+    "reference_answer": "Under the Early Income option, income can start at the end of the first policy month or first policy year, depending on the selected payout mode. The Income Benefit consists of Guaranteed Income plus any declared Cash Bonus, provided due premiums are paid and the policy is in force.",
+      "relevant_chunk_ids": [
+        "chunk_4c132298090b1a75124e6108",
+        "chunk_0caaa8d482a6a8087810a9f2",
+        "chunk_826e0437e98ede546fd230b5"
+    ]
+  },
+  {
+    "question_id": "Q022",
+    "product": "Kotak GAIN",
+    "question_type": "Eligibility / Conditions",
+    "question": "What is the minimum annual premium for Kotak GAIN, and how long can I pay premiums?",
+    "reference_answer": "The minimum annual premium is ₹50,000, with no stated maximum other than the company's underwriting policy. Premium payment terms are 6, 8, 10, or 12 years.",
+    "relevant_chunk_ids": [
+      "chunk_0caaa8d482a6a8087810a9f2"
+    ]
+  },
+  {
+    "question_id": "Q023",
+    "product": "Kotak GAIN",
+    "question_type": "Exclusions / Limitations",
+    "question": "What benefits are reduced if my Kotak GAIN policy becomes reduced paid-up?",
+    "reference_answer": "A reduced paid-up Kotak GAIN policy is not eligible for future Cash Bonuses. Depending on the selected option, Guaranteed Income or Guaranteed Loyalty Additions are reduced in proportion to premiums paid, while accrued Paid-Up Additions can continue participating in future profits.",
+    "relevant_chunk_ids": [
+      "chunk_a56d1c2bd4ed1f2da7a5f45b",
+      "chunk_470b92ec562152b0752a8a01",
+      "chunk_0f9c1ea09071b87cdeb1fde6"
+    ]
+  },
+  {
+    "question_id": "Q025",
+    "product": "Kotak GAIN",
+    "question_type": "Comparison / Unique Feature",
+    "question": "How can the Guaranteed Loyalty Additions under GAIN's Premium Saver option help pay my premiums?",
+    "reference_answer": "Under Premium Saver, each Guaranteed Loyalty Addition equals 110% of the annualized premium and is paid during the last two years of the premium payment term. It is payable at the beginning of the applicable policy year.\n\nFor an 8-year payment term, the additions arise at the start of years 7 and 8; for 10 years, at years 9 and 10; and for 12 years, at years 11 and 12. The additions can be used toward due premiums: you pay any shortfall, and any excess is paid to you.",
+    "relevant_chunk_ids": [
+      "chunk_d00c55be3158cb51854fda57",
+      "chunk_abfe8bc0b41596c226e531d6"
+    ]
+  },
+  {
+    "question_id": "Q026",
+    "product": "KOTAK ASSURED PENSION",
+    "question_type": "Simple Factual",
+    "question": "How many annuity options can I choose from in Kotak Assured Pension?",
+    "reference_answer": "Kotak Assured Pension provides eight Immediate Annuity options and two Deferred Annuity options.",
+      "relevant_chunk_ids": [
+        "chunk_e3a2ffc0c234261c28a13c3b"
+    ]
+  },
+  {
+    "question_id": "Q027",
+    "product": "KOTAK ASSURED PENSION",
+    "question_type": "Eligibility / Conditions",
+    "question": "What is the minimum entry age for a new individual buying Kotak Assured Pension?",
+    "reference_answer": "For a new or existing individual customer, the minimum entry age is 40 years for Immediate Annuity options and 45 years for Deferred Annuity options. Entry age is measured on the last birthday.",
+    "relevant_chunk_ids": [
+      "chunk_83d8565a64c1705a188b6760",
+      "chunk_526ee4bb50daa48d80983248"
+    ]
+  },
+  {
+    "question_id": "Q028",
+    "product": "KOTAK ASSURED PENSION",
+    "question_type": "Exclusions / Limitations",
+    "question": "Does Kotak Assured Pension pay a maturity benefit?",
+    "reference_answer": "No—Kotak Assured Pension does not provide a maturity benefit.",
+    "relevant_chunk_ids": [
+      "chunk_7305d19d7e7975016d12cabb"
+    ]
+  },
+  {
+    "question_id": "Q029",
+    "product": "KOTAK ASSURED PENSION",
+    "question_type": "Benefits / Coverage",
+    "question": "What does the Cash-Back on Death or Critical Illness annuity option pay?",
+    "reference_answer": "Under Option 6b, annuity is paid throughout the annuitant's lifetime. The cash-back event is the earlier of diagnosis with one of the six specified critical illnesses before age 86 or the annuitant's death.\n\nThe covered illnesses are specified-severity cancer, open-chest CABG, first heart attack of specified severity, major organ or bone-marrow transplant, stroke resulting in permanent symptoms, and kidney failure requiring regular dialysis. When the covered event occurs, the Total Premium excluding taxes and other statutory levies is returned to the annuitant or nominee.",
+    "relevant_chunk_ids": [
+      "chunk_e6f8c06f57d92aac4fddc699",
+      "chunk_7305d19d7e7975016d12cabb"
+    ]
+  },
+  {
+    "question_id": "Q030",
+    "product": "KOTAK ASSURED PENSION",
+    "question_type": "Comparison / Unique Feature",
+    "question": "Can I defer my Kotak Assured Pension income and still build guaranteed additions?",
+    "reference_answer": "Yes. Deferred Annuity Options 7 and 10 allow you to select a deferment period of 1 to 10 years, and annuity payments begin after that period ends.\n\nGuaranteed Additions accrue monthly during the deferment period. They apply to eligible in-force premium-paying or fully paid policies, but they are not attached to lapsed or reduced paid-up policies.",
+    "relevant_chunk_ids": [
+      "chunk_7129177b6c0b499e05d9c4f3",
+      "chunk_7305d19d7e7975016d12cabb",
+      "chunk_e3a2ffc0c234261c28a13c3b"
+    ]
+  },
+  {
+    "question_id": "Q031",
+    "product": null,
+    "question_type": "Cross-Product Comparison",
+    "question": "How do the maturity benefits of Kotak EDGE and Kotak TULIP differ?",
+    "reference_answer": "Kotak EDGE pays the Sum Assured on Maturity plus any accumulated Guaranteed Income under the accrual option; its Sum Assured on Maturity is the annualized premium multiplied by the premium payment term. Kotak TULIP instead pays the Main Account and Top-Up Account Fund Value, including Loyalty Additions when all premiums are current and the policy is in force.",
+    "relevant_chunk_ids": [
+      "chunk_592b0cfbc041bce3cad226c3",
+      "chunk_09716cf6631348d73260b980",
+      "chunk_7bc2b289821de62017883c4c"
+    ]
+  },
+  {
+    "question_id": "Q032",
+    "product": null,
+    "question_type": "Cross-Product Comparison",
+    "question": "Compare the maturity benefit under Gen2Gen Protect Life ROP with Fortune Maximiser.",
+    "reference_answer": "Gen2Gen Protect Life ROP pays the Sum Assured on Maturity as a lump sum and then terminates. Fortune Maximiser's maturity benefit depends on the bonus payout option: it includes the Basic Sum Assured and applicable declared bonuses, and under Paid-Up Additions it also includes available accrued Paid-Up Additions.",
+    "relevant_chunk_ids": [
+      "chunk_e91036aef8563bd12621fb91",
+      "chunk_d6f71cb5b9cf7e142f140e74"
+    ]
+  },
+  {
+    "question_id": "Q033",
+    "product": null,
+    "question_type": "Cross-Product Comparison",
+    "question": "Which can start income sooner, Kotak EDGE or Kotak GAIN?",
+    "reference_answer": "Kotak GAIN can start sooner: its Early Income option can begin at the end of the first policy month or first policy year, depending on the payout mode. Kotak EDGE can begin Guaranteed Income from the 13th policy monthiversary after the deferment period.",
+    "relevant_chunk_ids": [
+      "chunk_58b0d1b6aded40a29880ee0c",
+      "chunk_4c132298090b1a75124e6108"
+    ]
+  },
+  {
+    "question_id": "Q034",
+    "product": null,
+    "question_type": "Cross-Product Comparison",
+    "question": "Compare the early surrender or withdrawal restrictions in Kotak EDGE and Kotak TULIP.",
+    "reference_answer": "Kotak EDGE acquires a Guaranteed Surrender Value after full premiums for at least two consecutive policy years have been paid. Kotak TULIP has a five-year lock-in: partial withdrawals from the Main Account are allowed only after that period, and surrender proceeds requested during the lock-in are payable only when the lock-in ends.",
+    "relevant_chunk_ids": [
+      "chunk_ba865359f19dcc34fb3f55ef",
+      "chunk_b6101535d5e4025a10adbe58",
+      "chunk_a387fa0f7b1edb274e7ba324",
+      "chunk_ae5423681f97f0e1e399756b",
+      "chunk_dcd8a18784d99d51a9066de9"
+    ]
+  },
+  {
+    "question_id": "Q035",
+    "product": null,
+    "question_type": "Cross-Product Comparison",
+    "question": "How does Gen2Gen Protect's Legacy ROP family cover differ from Fortune Maximiser's Spouse Cover?",
+    "reference_answer": "Legacy ROP covers a parent during the policy term and, if the parent survives to maturity, transfers the Basic Sum Assured to one named child for cover until the child reaches age 60. Fortune Maximiser instead lets the policyholder add a spouse at inception, with the spouse's Sum Assured on Death set between 50% and 100% of the primary life insured's Basic Sum Assured.",
+      "relevant_chunk_ids": [
+        "chunk_2f44a3492cd4b980a88d78ec",
+        "chunk_134463b9ff1805fc697ea28e",
+        "chunk_704fed6e150aa2a6c708737f",
+        "chunk_834598a8dff581acdc9c301f"
+    ]
+  },
+  {
+    "question_id": "Q036",
+    "product": null,
+    "question_type": "Cross-Product Comparison",
+    "question": "How is income under Kotak Assured Pension different from Kotak GAIN's Early Income option?",
+    "reference_answer": "Kotak Assured Pension is an annuity plan that pays a regular income for life, either immediately or after a selected deferment period. Kotak GAIN's Early Income is a savings-plan benefit that can start at the end of the first policy month or year and consists of Guaranteed Income plus any declared Cash Bonus.",
+    "relevant_chunk_ids": [
+      "chunk_e3a2ffc0c234261c28a13c3b",
+      "chunk_4c132298090b1a75124e6108"
+    ]
+  }
+]

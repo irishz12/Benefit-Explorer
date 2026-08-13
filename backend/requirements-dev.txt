@@ -1,0 +1,4 @@
+-c constraints.txt
+-r requirements.txt
+
+pytest==8.4.2

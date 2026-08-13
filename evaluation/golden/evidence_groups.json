@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "definition": "Each group is one material evidence item. Any chunk in a group may satisfy it because group members contain equivalent or overlapping evidence.",
+  "questions": {
+    "Q001": [{"evidence_id": "E1", "description": "Guaranteed Income start timing and first-payment condition", "chunk_ids": ["chunk_643b8e82237436dc72a94ff2", "chunk_58b0d1b6aded40a29880ee0c"]}],
+    "Q002": [{"evidence_id": "E1", "description": "Entry ages and minor-policy conditions", "chunk_ids": ["chunk_ac023739bcbbeaf38b7a95bc"]}],
+    "Q003": [{"evidence_id": "E1", "description": "Suicide exclusion payout", "chunk_ids": ["chunk_c5f170a87c9a0b893a91e231"]}],
+    "Q004": [
+      {"evidence_id": "E1", "description": "Maturity payout and Sum Assured on Maturity formula", "chunk_ids": ["chunk_592b0cfbc041bce3cad226c3", "chunk_643b8e82237436dc72a94ff2", "chunk_58b0d1b6aded40a29880ee0c"]},
+      {"evidence_id": "E2", "description": "Accumulated Guaranteed Income at maturity", "chunk_ids": ["chunk_592b0cfbc041bce3cad226c3", "chunk_38012b10f48093ce13b6d385"]}
+    ],
+    "Q005": [{"evidence_id": "E1", "description": "Insta Cashback percentages, timing, and irrevocability", "chunk_ids": ["chunk_643b8e82237436dc72a94ff2", "chunk_58b0d1b6aded40a29880ee0c"]}],
+    "Q006": [{"evidence_id": "E1", "description": "Two TULIP investment strategies", "chunk_ids": ["chunk_3527308c6f9b8212b0cb49c4"]}],
+    "Q007": [{"evidence_id": "E1", "description": "TULIP entry and maturity ages", "chunk_ids": ["chunk_7bc2b289821de62017883c4c"]}],
+    "Q008": [
+      {"evidence_id": "E1", "description": "No partial-withdrawal liquidity during five-year lock-in", "chunk_ids": ["chunk_3527308c6f9b8212b0cb49c4", "chunk_7bc2b289821de62017883c4c", "chunk_b6101535d5e4025a10adbe58"]},
+      {"evidence_id": "E2", "description": "Surrender proceeds requested during lock-in are paid after lock-in", "chunk_ids": ["chunk_a387fa0f7b1edb274e7ba324", "chunk_ae5423681f97f0e1e399756b", "chunk_dcd8a18784d99d51a9066de9"]}
+    ],
+    "Q009": [{"evidence_id": "E1", "description": "In-force and reduced-paid-up maturity payouts", "chunk_ids": ["chunk_09716cf6631348d73260b980", "chunk_7bc2b289821de62017883c4c"]}],
+    "Q011": [{"evidence_id": "E1", "description": "Optional rider list and additional premium", "chunk_ids": ["chunk_704fed6e150aa2a6c708737f", "chunk_834598a8dff581acdc9c301f"]}],
+    "Q012": [{"evidence_id": "E1", "description": "Legacy ROP adult, child, and age-gap conditions", "chunk_ids": ["chunk_3429f4dcec54b40e4af3b3ce", "chunk_1d5c2cfe8b747077b52115d5"]}],
+    "Q013": [{"evidence_id": "E1", "description": "Policy-loan minimum, maximum, and deductions", "chunk_ids": ["chunk_7397397b4639c56bb5a6cdd6"]}],
+    "Q015": [{"evidence_id": "E1", "description": "Legacy ROP parent-to-child cover transfer", "chunk_ids": ["chunk_2f44a3492cd4b980a88d78ec", "chunk_704fed6e150aa2a6c708737f"]}],
+    "Q016": [{"evidence_id": "E1", "description": "Bonus payout choices and deferred-payout limitation", "chunk_ids": ["chunk_e120c7f05434b74e07a516ae", "chunk_fa004d8e1537d10c885bc72c", "chunk_18af2dc7dd802cdf8f6460ac", "chunk_63b4a7ec2ffe2822d229699c", "chunk_d6f71cb5b9cf7e142f140e74"]}],
+    "Q017": [{"evidence_id": "E1", "description": "Fortune Maximiser minimum and maximum entry ages", "chunk_ids": ["chunk_062f5972a8aa79e5d70d1ef1", "chunk_f6c8ede52225a8bcf2ffdef3"]}],
+    "Q021": [
+      {"evidence_id": "E1", "description": "Early Income start timing", "chunk_ids": ["chunk_4c132298090b1a75124e6108"]},
+      {"evidence_id": "E2", "description": "Income Benefit components and conditions", "chunk_ids": ["chunk_4c132298090b1a75124e6108", "chunk_0caaa8d482a6a8087810a9f2", "chunk_826e0437e98ede546fd230b5"]}
+    ],
+    "Q022": [{"evidence_id": "E1", "description": "GAIN minimum premium and payment terms", "chunk_ids": ["chunk_0caaa8d482a6a8087810a9f2"]}],
+    "Q023": [
+      {"evidence_id": "E1", "description": "Reduced Guaranteed Income and no future Cash Bonus", "chunk_ids": ["chunk_a56d1c2bd4ed1f2da7a5f45b", "chunk_470b92ec562152b0752a8a01"]},
+      {"evidence_id": "E2", "description": "Accrued Paid-Up Additions continue participating", "chunk_ids": ["chunk_a56d1c2bd4ed1f2da7a5f45b", "chunk_0f9c1ea09071b87cdeb1fde6"]}
+    ],
+    "Q025": [{"evidence_id": "E1", "description": "Premium Saver additions, timing, and premium offset", "chunk_ids": ["chunk_d00c55be3158cb51854fda57", "chunk_abfe8bc0b41596c226e531d6"]}],
+    "Q026": [{"evidence_id": "E1", "description": "Immediate and Deferred Annuity option counts", "chunk_ids": ["chunk_e3a2ffc0c234261c28a13c3b"]}],
+    "Q027": [{"evidence_id": "E1", "description": "Minimum entry ages by annuity type", "chunk_ids": ["chunk_83d8565a64c1705a188b6760", "chunk_526ee4bb50daa48d80983248"]}],
+    "Q028": [{"evidence_id": "E1", "description": "No maturity benefit", "chunk_ids": ["chunk_7305d19d7e7975016d12cabb"]}],
+    "Q029": [
+      {"evidence_id": "E1", "description": "Lifetime annuity and cash-back trigger/payout", "chunk_ids": ["chunk_e6f8c06f57d92aac4fddc699", "chunk_7305d19d7e7975016d12cabb"]},
+      {"evidence_id": "E2", "description": "Six covered critical illnesses", "chunk_ids": ["chunk_e6f8c06f57d92aac4fddc699"]}
+    ],
+    "Q030": [
+      {"evidence_id": "E1", "description": "Deferred options, period, and annuity start", "chunk_ids": ["chunk_7129177b6c0b499e05d9c4f3", "chunk_e3a2ffc0c234261c28a13c3b"]},
+      {"evidence_id": "E2", "description": "Guaranteed Addition accrual and policy-status conditions", "chunk_ids": ["chunk_7129177b6c0b499e05d9c4f3", "chunk_7305d19d7e7975016d12cabb"]}
+    ],
+    "Q031": [
+      {"evidence_id": "E1", "description": "Kotak EDGE maturity benefit", "chunk_ids": ["chunk_592b0cfbc041bce3cad226c3"]},
+      {"evidence_id": "E2", "description": "Kotak TULIP maturity benefit", "chunk_ids": ["chunk_09716cf6631348d73260b980", "chunk_7bc2b289821de62017883c4c"]}
+    ],
+    "Q032": [
+      {"evidence_id": "E1", "description": "Gen2Gen Life ROP maturity benefit", "chunk_ids": ["chunk_e91036aef8563bd12621fb91"]},
+      {"evidence_id": "E2", "description": "Fortune Maximiser maturity benefit", "chunk_ids": ["chunk_d6f71cb5b9cf7e142f140e74"]}
+    ],
+    "Q033": [
+      {"evidence_id": "E1", "description": "Kotak EDGE income start", "chunk_ids": ["chunk_58b0d1b6aded40a29880ee0c"]},
+      {"evidence_id": "E2", "description": "Kotak GAIN Early Income start", "chunk_ids": ["chunk_4c132298090b1a75124e6108"]}
+    ],
+    "Q034": [
+      {"evidence_id": "E1", "description": "Kotak EDGE surrender-value condition", "chunk_ids": ["chunk_ba865359f19dcc34fb3f55ef"]},
+      {"evidence_id": "E2", "description": "Kotak TULIP partial-withdrawal lock-in", "chunk_ids": ["chunk_b6101535d5e4025a10adbe58", "chunk_dcd8a18784d99d51a9066de9"]},
+      {"evidence_id": "E3", "description": "Kotak TULIP surrender proceeds after lock-in", "chunk_ids": ["chunk_a387fa0f7b1edb274e7ba324", "chunk_ae5423681f97f0e1e399756b", "chunk_dcd8a18784d99d51a9066de9"]}
+    ],
+    "Q035": [
+      {"evidence_id": "E1", "description": "Gen2Gen Legacy ROP child-cover transfer", "chunk_ids": ["chunk_2f44a3492cd4b980a88d78ec", "chunk_704fed6e150aa2a6c708737f", "chunk_834598a8dff581acdc9c301f"]},
+      {"evidence_id": "E2", "description": "Fortune Maximiser Spouse Cover", "chunk_ids": ["chunk_134463b9ff1805fc697ea28e"]}
+    ],
+    "Q036": [
+      {"evidence_id": "E1", "description": "Kotak Assured Pension lifetime annuity", "chunk_ids": ["chunk_e3a2ffc0c234261c28a13c3b"]},
+      {"evidence_id": "E2", "description": "Kotak GAIN Early Income", "chunk_ids": ["chunk_4c132298090b1a75124e6108"]}
+    ]
+  }
+}

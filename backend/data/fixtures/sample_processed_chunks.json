@@ -1,0 +1,22 @@
+[
+  {
+    "chunk_id": "fixture_chunk_coverage",
+    "product_name": "Example Secure Income Plan",
+    "page_number": 2,
+    "page_numbers": [2],
+    "section_type": "Benefits",
+    "section_types": ["Benefits"],
+    "source_file": "example-secure-income-plan.pdf",
+    "text": "Illustrative fixture only. If the fictional policy remains in force to maturity, the fictional maturity benefit is paid as described in this sanitized example. This text is not copied from any insurer brochure."
+  },
+  {
+    "chunk_id": "fixture_chunk_exclusion",
+    "product_name": "Example Secure Income Plan",
+    "page_number": 4,
+    "page_numbers": [4],
+    "section_type": "Exclusions",
+    "section_types": ["Exclusions"],
+    "source_file": "example-secure-income-plan.pdf",
+    "text": "Illustrative fixture only. This fictional exclusion exists solely to exercise ingestion metadata, retrieval, and citation tests. It is not a real policy term and is not copied from a third-party document."
+  }
+]

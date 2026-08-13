@@ -1,0 +1,46 @@
+.DS_Store
+
+# Secrets and machine-local configuration
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+backend/.venv/
+
+# JavaScript / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated indexes and brochure-derived data
+backend/data/chroma_db/
+backend/data/*.pdf
+backend/data/**/*.pdf
+backend/data/*.PDF
+backend/data/**/*.PDF
+backend/data/processed_chunks.json
+backend/data/document_manifest.json
+
+# Generated evaluation artifacts
+evaluation/results/*
+!evaluation/results/.gitkeep
+evaluation/reports/*
+!evaluation/reports/.gitkeep

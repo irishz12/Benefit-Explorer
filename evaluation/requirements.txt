@@ -1,0 +1,7 @@
+# RAGAS judge metrics. Install after backend/requirements.txt.
+ragas==0.4.3
+langchain-community==0.3.31
+langchain-openai>=1.4,<2.0
+scikit-network>=0.33,<1.0
+dataclasses-json>=0.6,<1.0
+fsspec>=2023.1.0,<=2026.6.0
