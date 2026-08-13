@@ -1,6 +1,6 @@
 # BenefitExplorer
 
-[![CI](https://github.com/rishikesh0012/Benefit-Explorer/actions/workflows/ci.yml/badge.svg)](https://github.com/rishikesh0012/Benefit-Explorer/actions/workflows/ci.yml)
+[![CI](https://github.com/rishikesh0012/Benefit-Explorer/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rishikesh0012/Benefit-Explorer/actions/workflows/ci.yml?query=branch%3Amain)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -384,14 +384,6 @@ usable evidence. See `evaluation/golden/LABELING.md` for the labeling policy.
 - The first local request can be slow while embedding and reranking models load.
 - This application does not replace policy contracts or professional advice.
 
-## Naive RAG baseline
-
-A controlled baseline comparison is planned but has not yet been published. A
-future experiment will compare the current hybrid, product-aware, multi-signal
-pipeline against a naive dense-retrieval baseline using the same golden set,
-generation model, context limit, and evaluation protocol. No baseline result is
-claimed until that experiment is reproducibly run.
-
 ## Future improvements
 
 - Add explicit multi-part question decomposition before retrieval and generation
@@ -408,12 +400,6 @@ claimed until that experiment is reproducibly run.
 - The frontend never accepts or stores provider credentials.
 - Raw PDFs, derived chunks, Chroma indexes, model caches, and generated reports are ignored.
 - Review brochure redistribution rights before publishing any source document.
-
-## Suggested GitHub topics
-
-`rag` · `llm` · `insurance` · `retrieval-augmented-generation` · `fastapi` ·
-`nextjs` · `hybrid-retrieval` · `reranking` · `chromadb` · `sentence-transformers`
-· `ragas` · `citations`
 
 ## License
 
