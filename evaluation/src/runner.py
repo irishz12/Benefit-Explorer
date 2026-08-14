@@ -216,7 +216,9 @@ async def generate_artifacts(args: argparse.Namespace) -> dict[str, Any]:
             }
             print(f"  generation failed: {row['generation_error']}", flush=True)
         rows.append(row)
-        write_json(_generation_payload(configuration, rows, len(questions), "running"), args.artifacts)
+        write_json(
+            _generation_payload(configuration, rows, len(questions), "running"), args.artifacts
+        )
 
     payload = _generation_payload(configuration, rows, len(questions), "complete")
     payload["generation_success_n"] = sum(row["generation_error"] is None for row in rows)

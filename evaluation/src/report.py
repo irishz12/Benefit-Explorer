@@ -107,7 +107,9 @@ def aggregate_dual_judges(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
     all_rows = list(rows)
     aggregates: dict[str, Any] = {}
     for split in ("dev", "holdout", "all"):
-        split_rows = all_rows if split == "all" else [row for row in all_rows if row["split"] == split]
+        split_rows = (
+            all_rows if split == "all" else [row for row in all_rows if row["split"] == split]
+        )
         successful = [row for row in split_rows if row.get("generation_error") is None]
         aggregates[split] = {
             "question_count": len(split_rows),
@@ -117,8 +119,7 @@ def aggregate_dual_judges(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
             ],
             "judges": {
                 judge: {
-                    metric: _judge_aggregate(successful, judge, metric)
-                    for metric in JUDGE_METRICS
+                    metric: _judge_aggregate(successful, judge, metric) for metric in JUDGE_METRICS
                 }
                 for judge in JUDGE_KEYS
             },
@@ -157,9 +158,15 @@ def write_csv(rows: list[dict[str, Any]], path: Path) -> None:
                     "self_judge_model_id": row["judge_model_ids"]["self"],
                     "independent_judge_model_id": row["judge_model_ids"]["independent"],
                     "self_faithfulness": _metric_outcome(row, "self", "faithfulness").get("value"),
-                    "independent_faithfulness": _metric_outcome(row, "independent", "faithfulness").get("value"),
-                    "self_answer_correctness": _metric_outcome(row, "self", "answer_correctness").get("value"),
-                    "independent_answer_correctness": _metric_outcome(row, "independent", "answer_correctness").get("value"),
+                    "independent_faithfulness": _metric_outcome(
+                        row, "independent", "faithfulness"
+                    ).get("value"),
+                    "self_answer_correctness": _metric_outcome(
+                        row, "self", "answer_correctness"
+                    ).get("value"),
+                    "independent_answer_correctness": _metric_outcome(
+                        row, "independent", "answer_correctness"
+                    ).get("value"),
                     "context_recall_at_4": row.get("context_recall_at_4"),
                     "generation_error": row.get("generation_error"),
                 }
@@ -211,9 +218,7 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
                 f"{delta_text} ({delta['paired_n']}/{delta['eligible_n']}) |"
             )
         recall = aggregate["context_recall_at_4"]
-        lines.append(
-            f"| context_recall_at_4 (deterministic) | {_score_cell(recall)} | — | — |"
-        )
+        lines.append(f"| context_recall_at_4 (deterministic) | {_score_cell(recall)} | — | — |")
         lines.append("")
         lines.append(
             f"- Evidence groups fully covered on {recall['fully_covered_n']} of "

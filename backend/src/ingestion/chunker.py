@@ -73,7 +73,11 @@ class ClauseAwareChunker:
         if boundary_index >= len(self._BOUNDARIES):
             return self.token_counter.split(text, self.max_tokens)
 
-        pieces = [piece.strip() for piece in re.split(self._BOUNDARIES[boundary_index], text) if piece.strip()]
+        pieces = [
+            piece.strip()
+            for piece in re.split(self._BOUNDARIES[boundary_index], text)
+            if piece.strip()
+        ]
         if len(pieces) == 1:
             return self._recursive_split(text, boundary_index + 1)
 
@@ -102,7 +106,9 @@ class ClauseAwareChunker:
     def _packed_chunk(self, units: list[_Unit]) -> _PackedChunk:
         section_sizes: dict[str, int] = {}
         for unit in units:
-            section_sizes[unit.section_type] = section_sizes.get(unit.section_type, 0) + self.token_counter.count(unit.text)
+            section_sizes[unit.section_type] = section_sizes.get(
+                unit.section_type, 0
+            ) + self.token_counter.count(unit.text)
         primary_section = max(section_sizes, key=section_sizes.__getitem__)
         return _PackedChunk(
             text="\n\n".join(item.text for item in units).strip(),
@@ -134,9 +140,15 @@ class ClauseAwareChunker:
                 if self.token_counter.count(combined) <= self.max_tokens:
                     chunks[-1] = _PackedChunk(
                         combined,
-                        tuple(dict.fromkeys(chunks[-1].page_numbers + self._ordered_pages(current))),
+                        tuple(
+                            dict.fromkeys(chunks[-1].page_numbers + self._ordered_pages(current))
+                        ),
                         chunks[-1].section_type,
-                        tuple(dict.fromkeys(chunks[-1].section_types + self._ordered_sections(current))),
+                        tuple(
+                            dict.fromkeys(
+                                chunks[-1].section_types + self._ordered_sections(current)
+                            )
+                        ),
                     )
                 else:
                     chunks.append(self._packed_chunk(current))

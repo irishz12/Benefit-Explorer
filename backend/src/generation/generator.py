@@ -274,8 +274,7 @@ class BedrockGenerator:
             except CitationValidationError as exc:
                 last_error = exc
                 invalid_json = any(
-                    reason.startswith("Response is not valid JSON")
-                    for reason in exc.reasons
+                    reason.startswith("Response is not valid JSON") for reason in exc.reasons
                 )
                 if invalid_json:
                     self._log_invalid_json(content, str(exc))
@@ -366,8 +365,10 @@ class BedrockGenerator:
         except CitationValidationError as exc:
             last_error = exc
 
-        reasons = last_error.reasons if last_error else (
-            "Structured and plain-text generation did not produce a verifiable answer",
+        reasons = (
+            last_error.reasons
+            if last_error
+            else ("Structured and plain-text generation did not produce a verifiable answer",)
         )
         raise CitationValidationError(
             f"The model did not produce verifiable citations: {last_error}",

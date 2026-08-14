@@ -11,16 +11,35 @@ from .models import ExtractedPage, SectionSpan
 SECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("Exclusions", re.compile(r"\b(exclusions?|what (?:is|are) not covered|not covered)\b", re.I)),
     ("Waiting Period", re.compile(r"\b(waiting periods?|survival periods?)\b", re.I)),
-    ("Eligibility", re.compile(r"\b(eligibility|entry age|maturity age|who can (?:buy|apply)|age at entry)\b", re.I)),
-    ("Premiums", re.compile(r"\b(premiums?|premium payment|payment frequency|modal premium)\b", re.I)),
-    ("Benefits", re.compile(r"\b(benefits?|death benefit|maturity benefit|survival benefit|rider benefit)\b", re.I)),
-    ("Policy Terms", re.compile(r"\b(policy terms?|terms and conditions|policy tenure|policy term)\b", re.I)),
+    (
+        "Eligibility",
+        re.compile(
+            r"\b(eligibility|entry age|maturity age|who can (?:buy|apply)|age at entry)\b", re.I
+        ),
+    ),
+    (
+        "Premiums",
+        re.compile(r"\b(premiums?|premium payment|payment frequency|modal premium)\b", re.I),
+    ),
+    (
+        "Benefits",
+        re.compile(
+            r"\b(benefits?|death benefit|maturity benefit|survival benefit|rider benefit)\b", re.I
+        ),
+    ),
+    (
+        "Policy Terms",
+        re.compile(r"\b(policy terms?|terms and conditions|policy tenure|policy term)\b", re.I),
+    ),
     ("Claims", re.compile(r"\b(claims?|claim procedure|how to claim|claim settlement)\b", re.I)),
     ("Surrender", re.compile(r"\b(surrender|discontinuance|foreclosure)\b", re.I)),
     ("Charges", re.compile(r"\b(charges?|fees?|deductions?)\b", re.I)),
     ("Tax Benefits", re.compile(r"\b(tax benefits?|income tax|taxation)\b", re.I)),
     ("Definitions", re.compile(r"\b(definitions?|meaning of terms)\b", re.I)),
-    ("Features", re.compile(r"\b(key features?|product features?|plan at a glance|highlights?)\b", re.I)),
+    (
+        "Features",
+        re.compile(r"\b(key features?|product features?|plan at a glance|highlights?)\b", re.I),
+    ),
     ("Riders", re.compile(r"\b(optional riders?|rider options?|add[- ]on covers?)\b", re.I)),
     ("Grievance", re.compile(r"\b(grievance|complaints?|ombudsman)\b", re.I)),
 )
@@ -51,7 +70,8 @@ def _is_heading(line: str, next_line: str = "") -> bool:
     compact_heading = (
         word_count <= 8
         and re.search(r"[.;,]", stripped) is None
-        and re.search(r"\b(?:shall|will|would|provides?|helps?|allows?|called)\b", stripped, re.I) is None
+        and re.search(r"\b(?:shall|will|would|provides?|helps?|allows?|called)\b", stripped, re.I)
+        is None
     )
     return known and (
         typographic

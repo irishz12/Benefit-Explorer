@@ -16,9 +16,7 @@ _INLINE_CITATION = re.compile(r"\[(\d+)]")
 _FUZZY_MATCH_THRESHOLD = 0.82
 _BULLET_MARKER = re.compile(r"^[•●▪◦–—-]\s*")
 _PAGE_NUMBER = re.compile(r"^\d{1,3}$")
-_SECTION_HEADING = re.compile(
-    r"^(?:\d+(?:\.\d+)*\.?\s+)?[A-Z][A-Za-z0-9 &'()@/+\-]{2,60}:?$"
-)
+_SECTION_HEADING = re.compile(r"^(?:\d+(?:\.\d+)*\.?\s+)?[A-Z][A-Za-z0-9 &'()@/+\-]{2,60}:?$")
 _QUOTE_TRANSLATION = str.maketrans(
     {
         "\u00a0": " ",
@@ -69,6 +67,7 @@ class VerifiedAnswer:
     answer: str
     citations: tuple[VerifiedCitation, ...]
 
+
 @dataclass(frozen=True, slots=True)
 class ProductCitationCoverage:
     """Verified citation indices for one requested or discussed product."""
@@ -79,6 +78,7 @@ class ProductCitationCoverage:
     @property
     def covered(self) -> bool:
         return bool(self.citation_indices)
+
 
 def _normalize(text: str) -> str:
     normalized = text.translate(_QUOTE_TRANSLATION)
@@ -104,9 +104,7 @@ def _candidate_passages(chunk_text: str, support_length: int) -> list[str]:
 
     tokens = _normalize(chunk_text).split()
     if support_length and tokens:
-        window_sizes = {
-            max(4, round(support_length * ratio)) for ratio in (0.85, 1.0, 1.15)
-        }
+        window_sizes = {max(4, round(support_length * ratio)) for ratio in (0.85, 1.0, 1.15)}
         step = max(1, support_length // 6)
         for window_size in window_sizes:
             for start in range(0, max(1, len(tokens) - window_size + 1), step):
@@ -143,17 +141,13 @@ def _product_citation_checks(
 ) -> tuple[ProductCitationCoverage, ...]:
     """Map requested/mentioned products to citations backed by their chunks."""
 
-    context_products = tuple(
-        dict.fromkeys(result.record.product_name for result in contexts)
-    )
+    context_products = tuple(dict.fromkeys(result.record.product_name for result in contexts))
     detector_names = tuple(dict.fromkeys((*context_products, *required_products)))
     mentioned_products = (
         ProductDetector(detector_names).detect(answer_text) if detector_names else ()
     )
     products = tuple(dict.fromkeys((*required_products, *mentioned_products)))
-    context_by_chunk = {
-        result.record.chunk_id: result.record for result in contexts
-    }
+    context_by_chunk = {result.record.chunk_id: result.record for result in contexts}
     checks: list[ProductCitationCoverage] = []
     for product in products:
         indices = tuple(
@@ -172,6 +166,7 @@ def _product_citation_checks(
         )
     return tuple(checks)
 
+
 def parse_and_verify_answer(
     payload: str | Mapping[str, Any],
     contexts: Sequence[HybridResult],
@@ -184,7 +179,9 @@ def parse_and_verify_answer(
             data = json.loads(payload)
         except json.JSONDecodeError as exc:
             reason = f"Response is not valid JSON: {exc}"
-            raise CitationValidationError(reason, payload=payload, reasons=(reason,), contexts=contexts) from exc
+            raise CitationValidationError(
+                reason, payload=payload, reasons=(reason,), contexts=contexts
+            ) from exc
     else:
         data = dict(payload)
 
@@ -310,9 +307,7 @@ def parse_and_verify_answer(
         contexts,
         required_products,
     )
-    missing_product_citations = [
-        check.product for check in product_checks if not check.covered
-    ]
+    missing_product_citations = [check.product for check in product_checks if not check.covered]
     if missing_product_citations:
         errors.append(
             "missing a verified citation from the product's own chunks for: "
@@ -326,6 +321,7 @@ def parse_and_verify_answer(
             contexts=contexts,
         )
     return VerifiedAnswer(answer=answer.strip(), citations=tuple(verified))
+
 
 def _extract_json_mapping(raw_output: str) -> Mapping[str, Any] | None:
     """Recover a JSON/Python-style object embedded in otherwise plain output."""
@@ -454,9 +450,7 @@ def recover_answer_payload(
     answer = _split_plain_answer(raw_output)
     inline_values = _INLINE_CITATION.findall(answer)
     marker_source = answer if inline_values else raw_output
-    indices = tuple(
-        dict.fromkeys(int(value) for value in _INLINE_CITATION.findall(marker_source))
-    )
+    indices = tuple(dict.fromkeys(int(value) for value in _INLINE_CITATION.findall(marker_source)))
     citations: list[dict[str, Any]] = []
     for index in indices:
         if index < 1 or index > len(contexts):

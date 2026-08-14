@@ -41,9 +41,7 @@ def test_dual_judge_delta_uses_only_paired_scores() -> None:
 
 def test_provider_errors_are_excluded_and_counted() -> None:
     row = _row("Q001", "dev", 0.9, 0.7)
-    row["judges"]["independent"]["metrics"]["faithfulness"] = _outcome(
-        None, "provider_error"
-    )
+    row["judges"]["independent"]["metrics"]["faithfulness"] = _outcome(None, "provider_error")
     metric = aggregate_dual_judges([row])["dev"]["judges"]["independent"]["faithfulness"]
     assert metric["mean"] is None
     assert metric["effective_n"] == 0
@@ -59,9 +57,7 @@ def test_unpaired_questions_are_dropped_with_a_stated_reason() -> None:
     assert delta["paired_n"] == 1
     assert delta["eligible_n"] == 2
     assert delta["dropped_n"] == 1
-    assert delta["dropped"] == [
-        {"question_id": "Q002", "self": "ok", "independent": "parse_error"}
-    ]
+    assert delta["dropped"] == [{"question_id": "Q002", "self": "ok", "independent": "parse_error"}]
 
 
 def test_generation_failures_are_named_per_split() -> None:

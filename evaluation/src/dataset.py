@@ -48,11 +48,7 @@ class GoldenQuestion:
             reference_answer=required_text("reference_answer"),
             relevant_chunk_ids=tuple(dict.fromkeys(relevant)),
             product=product.strip() if isinstance(product, str) and product.strip() else None,
-            category=(
-                category.strip()
-                if isinstance(category, str) and category.strip()
-                else None
-            ),
+            category=(category.strip() if isinstance(category, str) and category.strip() else None),
         )
 
 
@@ -101,9 +97,7 @@ def load_evaluation_splits(
     if not isinstance(payload, Mapping):
         raise ValueError(f"Expected a JSON object in {path}")
     dev_ids = tuple(_string_list(payload.get("dev_question_ids"), "dev_question_ids"))
-    holdout_ids = tuple(
-        _string_list(payload.get("holdout_question_ids"), "holdout_question_ids")
-    )
+    holdout_ids = tuple(_string_list(payload.get("holdout_question_ids"), "holdout_question_ids"))
     if len(dev_ids) != 20 or len(holdout_ids) != 10:
         raise ValueError("Frozen evaluation split must contain 20 dev and 10 holdout IDs")
     if set(dev_ids).intersection(holdout_ids):
@@ -142,9 +136,7 @@ def _attach_evidence_groups(
         for position, raw_group in enumerate(raw_groups, start=1):
             if not isinstance(raw_group, Mapping):
                 raise ValueError(f"{question.question_id} evidence group {position} is invalid")
-            chunk_ids = tuple(
-                dict.fromkeys(_string_list(raw_group.get("chunk_ids"), "chunk_ids"))
-            )
+            chunk_ids = tuple(dict.fromkeys(_string_list(raw_group.get("chunk_ids"), "chunk_ids")))
             if not chunk_ids:
                 raise ValueError(
                     f"{question.question_id} evidence group {position} has no chunk IDs"
@@ -153,9 +145,7 @@ def _attach_evidence_groups(
             description = str(raw_group.get("description", "")).strip()
             groups.append(EvidenceGroup(evidence_id, description, chunk_ids))
 
-        flattened = {
-            chunk_id for group in groups for chunk_id in group.chunk_ids
-        }
+        flattened = {chunk_id for group in groups for chunk_id in group.chunk_ids}
         expected = set(question.relevant_chunk_ids)
         if flattened != expected:
             raise ValueError(

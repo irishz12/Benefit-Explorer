@@ -50,7 +50,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     index_parser = subparsers.add_parser("index", help="Embed chunks and synchronize Chroma.")
     index_parser.add_argument("--chunks", type=Path, default=DEFAULT_CHUNKS)
-    index_parser.add_argument("--force", action="store_true", help="Delete and re-embed all records.")
+    index_parser.add_argument(
+        "--force", action="store_true", help="Delete and re-embed all records."
+    )
 
     query_parser = subparsers.add_parser("query", help="Run one hybrid query.")
     query_parser.add_argument("query")

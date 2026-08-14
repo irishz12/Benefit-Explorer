@@ -22,6 +22,10 @@ jobs:
           python -m pip install -r backend/requirements-dev.txt -r evaluation/requirements.txt
       - name: Verify dependency consistency
         run: python -m pip check
+      - name: Check Python formatting
+        run: python -m ruff format --check backend/src backend/tests evaluation
+      - name: Lint Python
+        run: python -m ruff check backend/src backend/tests evaluation
       - name: Run Python tests
         run: python -m pytest
 

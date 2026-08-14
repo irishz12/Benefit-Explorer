@@ -104,9 +104,7 @@ def build_mantle_generator(model: str | None = None) -> BedrockGenerator:
 
     api_key = os.getenv("AWS_BEARER_TOKEN_BEDROCK")
     if not api_key:
-        raise RuntimeError(
-            "Set AWS_BEARER_TOKEN_BEDROCK in backend/.env before starting the API."
-        )
+        raise RuntimeError("Set AWS_BEARER_TOKEN_BEDROCK in backend/.env before starting the API.")
     try:
         from openai import OpenAI
     except ImportError as error:
@@ -178,9 +176,7 @@ def health() -> dict[str, str]:
         "status": "ok",
         "generator": "aws-bedrock-mantle",
         "model": os.getenv("MANTLE_MODEL", DEFAULT_MANTLE_MODEL),
-        "credential_configured": str(
-            bool(os.getenv("AWS_BEARER_TOKEN_BEDROCK"))
-        ).lower(),
+        "credential_configured": str(bool(os.getenv("AWS_BEARER_TOKEN_BEDROCK"))).lower(),
     }
 
 
@@ -191,13 +187,17 @@ async def chat(request: ChatRequest) -> ChatResponse:
         run = await asyncio.to_thread(pipeline.answer, request.message.strip())
         return _serialize_run(run)
     except CitationValidationError as error:
-        raise HTTPException(status_code=422, detail={"message": str(error), "reasons": error.reasons}) from error
+        raise HTTPException(
+            status_code=422, detail={"message": str(error), "reasons": error.reasons}
+        ) from error
     except (RuntimeError, ValueError) as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
     except Exception as error:
         code, message = _public_error(error)
         status_code = 429 if code == "rate_limited" else 401 if code == "invalid_api_key" else 502
-        raise HTTPException(status_code=status_code, detail={"code": code, "message": message}) from error
+        raise HTTPException(
+            status_code=status_code, detail={"code": code, "message": message}
+        ) from error
 
 
 def _event(event: str, **payload: object) -> bytes:
@@ -210,9 +210,7 @@ def _public_error(error: Exception) -> tuple[str, str]:
     body = getattr(error, "body", None)
     error_detail = body.get("error", body) if isinstance(body, dict) else {}
     provider_message = (
-        str(error_detail.get("message", "")).casefold()
-        if isinstance(error_detail, dict)
-        else ""
+        str(error_detail.get("message", "")).casefold() if isinstance(error_detail, dict) else ""
     )
     if isinstance(error, RuntimeError) and "AWS_BEARER_TOKEN_BEDROCK" in str(error):
         return "configuration_error", str(error)

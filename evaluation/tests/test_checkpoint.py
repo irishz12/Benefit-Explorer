@@ -14,9 +14,7 @@ def _question() -> GoldenQuestion:
         question="Question?",
         reference_answer="Reference.",
         relevant_chunk_ids=("chunk_a", "chunk_b"),
-        relevant_evidence_groups=(
-            EvidenceGroup("E1", "answer", ("chunk_a", "chunk_b")),
-        ),
+        relevant_evidence_groups=(EvidenceGroup("E1", "answer", ("chunk_a", "chunk_b")),),
     )
 
 
@@ -65,12 +63,15 @@ def test_failed_or_incomplete_generation_artifact_is_retried(tmp_path: Path) -> 
     row = _complete_row()
     row["generation_error"] = "RateLimitError: retry later"
     _write(path, row)
-    assert load_generation_checkpoint(
-        path,
-        [_question()],
-        {"Q001": "dev"},
-        "config-1",
-    ) == {}
+    assert (
+        load_generation_checkpoint(
+            path,
+            [_question()],
+            {"Q001": "dev"},
+            "config-1",
+        )
+        == {}
+    )
 
 
 def test_configuration_mismatch_fails_loudly(tmp_path: Path) -> None:

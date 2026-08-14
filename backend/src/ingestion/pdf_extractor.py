@@ -105,10 +105,25 @@ def _product_name(path: Path, first_pages: list[str]) -> str:
                 continue
             overlap = len(filename_terms.intersection(lowered.split()))
             product_hint = int(
-                any(word in lowered for word in ("plan", "protect", "pension", "assured", "gain", "tulip", "edge", "maximiser"))
+                any(
+                    word in lowered
+                    for word in (
+                        "plan",
+                        "protect",
+                        "pension",
+                        "assured",
+                        "gain",
+                        "tulip",
+                        "edge",
+                        "maximiser",
+                    )
+                )
             )
             noise = int(
-                any(word in lowered for word in ("insurance is", "beware", "uin", "www.", "customer", "presents"))
+                any(
+                    word in lowered
+                    for word in ("insurance is", "beware", "uin", "www.", "customer", "presents")
+                )
             )
             score = overlap * 4 + product_hint * 2 - noise * 8 - len(words)
             if score >= 2:

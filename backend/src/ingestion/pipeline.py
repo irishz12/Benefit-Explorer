@@ -102,7 +102,9 @@ class IngestionPipeline:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_path = output_path.with_suffix(output_path.suffix + ".tmp")
         with temporary_path.open("w", encoding="utf-8") as output_file:
-            json.dump([chunk.to_dict() for chunk in chunks], output_file, indent=2, ensure_ascii=False)
+            json.dump(
+                [chunk.to_dict() for chunk in chunks], output_file, indent=2, ensure_ascii=False
+            )
             output_file.write("\n")
         temporary_path.replace(output_path)
 

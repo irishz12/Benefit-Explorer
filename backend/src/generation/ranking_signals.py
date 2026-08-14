@@ -418,9 +418,7 @@ def detect_query_intent(query: str) -> QueryIntent:
         )
         if section not in preferred
     )
-    anchors = tuple(
-        dict.fromkeys(phrase for rule in matched for phrase in rule.anchor_phrases)
-    )
+    anchors = tuple(dict.fromkeys(phrase for rule in matched for phrase in rule.anchor_phrases))
     return QueryIntent(
         matched[0].name,
         preferred,
@@ -504,9 +502,7 @@ def intent_anchor_score(text: str, intent: QueryIntent) -> float:
         return maturity_anchor_score(text)
     if intent.name in _ANSWER_ANCHOR_INTENTS:
         normalized = normalize_text(text)
-        matches = sum(
-            normalize_text(anchor) in normalized for anchor in intent.anchor_phrases
-        )
+        matches = sum(normalize_text(anchor) in normalized for anchor in intent.anchor_phrases)
         return min(1.0, matches / 2.0)
     return 0.0
 
@@ -517,8 +513,7 @@ def answer_evidence_score(window: str, intent: QueryIntent) -> float:
     normalized = normalize_text(window)
     verb_score = min(
         1.0,
-        sum(normalize_text(pattern) in normalized for pattern in _ANSWER_VERB_PATTERNS)
-        / 2.0,
+        sum(normalize_text(pattern) in normalized for pattern in _ANSWER_VERB_PATTERNS) / 2.0,
     )
     if intent.name in _ANSWER_ANCHOR_INTENTS:
         return min(
@@ -551,9 +546,7 @@ def exact_match_score(query: str, text: str, intent: QueryIntent) -> float:
     )
     phrases = _query_phrases(query, intent)
     phrase_coverage = (
-        sum(phrase in normalized_text for phrase in phrases) / len(phrases)
-        if phrases
-        else 0.0
+        sum(phrase in normalized_text for phrase in phrases) / len(phrases) if phrases else 0.0
     )
     query_numbers = {token for token in normalize_text(query).split() if token.isdigit()}
     text_numbers = {token for token in normalized_text.split() if token.isdigit()}
@@ -695,8 +688,6 @@ def select_focused_windows(
                 if embedding_score is not None
                 else lexical_score
             )
-            options.append(
-                FocusedWindow(window, combined, lexical_score, embedding_score)
-            )
+            options.append(FocusedWindow(window, combined, lexical_score, embedding_score))
         selected.append(max(options, key=lambda item: item.score))
     return selected

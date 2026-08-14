@@ -59,9 +59,7 @@ class HybridRetriever:
         self.product_aware = product_aware
         self.min_filtered_candidates = min_filtered_candidates
         self.product_score_boost = product_score_boost
-        self.product_detector = ProductDetector(
-            record.product_name for record in self.records
-        )
+        self.product_detector = ProductDetector(record.product_name for record in self.records)
 
     def detect_products(self, query: str) -> tuple[str, ...]:
         """Detect canonical product names represented in the collection."""
@@ -78,11 +76,7 @@ class HybridRetriever:
         filter_by_product: bool = True,
     ) -> list[HybridResult]:
         allowed_ids = (
-            {
-                record.chunk_id
-                for record in self.records
-                if record.product_name in product_names
-            }
+            {record.chunk_id for record in self.records if record.product_name in product_names}
             if product_names and filter_by_product
             else None
         )
@@ -116,9 +110,7 @@ class HybridRetriever:
 
         candidates: list[HybridResult] = []
         for item in fused.values():
-            product_match = bool(
-                product_names and item.record.product_name in product_names
-            )
+            product_match = bool(product_names and item.record.product_name in product_names)
             score = item.rrf_score
             if apply_product_boost and product_match:
                 score *= self.product_score_boost
@@ -190,9 +182,7 @@ class HybridRetriever:
             raise ValueError("retrieval limits must be positive")
 
         products = (
-            self.detect_products(query)
-            if preferred_products is None
-            else tuple(preferred_products)
+            self.detect_products(query) if preferred_products is None else tuple(preferred_products)
         )
         mode = "none"
         if products:
@@ -212,10 +202,7 @@ class HybridRetriever:
             keep_hard_filter = (
                 bool(candidates)
                 if len(products) == 1
-                else (
-                    all_products_represented
-                    and len(candidates) >= self.min_filtered_candidates
-                )
+                else (all_products_represented and len(candidates) >= self.min_filtered_candidates)
             )
             if keep_hard_filter:
                 mode = "hard_filter"

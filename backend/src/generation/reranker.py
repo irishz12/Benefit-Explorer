@@ -51,13 +51,16 @@ class RerankingSignalConfig:
     score_cliff_min_results: int = 1
 
     def __post_init__(self) -> None:
-        if min(
-            self.section_match_boost,
-            self.section_mismatch_penalty,
-            self.focused_selection_boost,
-            self.exact_match_boost,
-            self.intent_anchor_boost,
-        ) < 0:
+        if (
+            min(
+                self.section_match_boost,
+                self.section_mismatch_penalty,
+                self.focused_selection_boost,
+                self.exact_match_boost,
+                self.intent_anchor_boost,
+            )
+            < 0
+        ):
             raise ValueError("Reranking boost and penalty weights cannot be negative")
         if not 0.0 <= self.focused_window_weight <= 1.0:
             raise ValueError("focused_window_weight must be between 0 and 1")
@@ -69,19 +72,13 @@ class RerankingSignalConfig:
             raise ValueError("near_duplicate_threshold must be between 0 and 1")
         if self.score_cliff_gap < 0:
             raise ValueError("score_cliff_gap cannot be negative")
-        if not (
-            0.0
-            <= self.score_cliff_unsupported_single_gap
-            <= self.score_cliff_gap
-        ):
+        if not (0.0 <= self.score_cliff_unsupported_single_gap <= self.score_cliff_gap):
             raise ValueError(
-                "score_cliff_unsupported_single_gap must be between zero and "
-                "score_cliff_gap"
+                "score_cliff_unsupported_single_gap must be between zero and " "score_cliff_gap"
             )
         if self.score_cliff_single_result_gap < self.score_cliff_gap:
             raise ValueError(
-                "score_cliff_single_result_gap cannot be smaller than "
-                "score_cliff_gap"
+                "score_cliff_single_result_gap cannot be smaller than " "score_cliff_gap"
             )
         if self.score_cliff_min_results < 1:
             raise ValueError("score_cliff_min_results must be positive")
@@ -144,9 +141,13 @@ class BGEReranker:
 
         spans: dict[str, tuple[int, int]] = {}
         for product in products:
-            pattern = r"(?<![a-z0-9])" + r"[^a-z0-9]+".join(
-                re.escape(token) for token in re.findall(r"[a-z0-9]+", product.casefold())
-            ) + r"(?![a-z0-9])"
+            pattern = (
+                r"(?<![a-z0-9])"
+                + r"[^a-z0-9]+".join(
+                    re.escape(token) for token in re.findall(r"[a-z0-9]+", product.casefold())
+                )
+                + r"(?![a-z0-9])"
+            )
             match = re.search(pattern, query.casefold())
             if match is not None:
                 spans[product] = match.span()
@@ -186,9 +187,7 @@ class BGEReranker:
             lexical_candidates_per_chunk=config.lexical_candidates_per_chunk,
             semantic_weight=config.window_semantic_weight,
         )
-        full_pairs = [
-            (scoring_query, candidate.record.search_text) for candidate in candidates
-        ]
+        full_pairs = [(scoring_query, candidate.record.search_text) for candidate in candidates]
         focused_pairs = (
             [
                 (
@@ -214,17 +213,14 @@ class BGEReranker:
         full_scores = scores[: len(candidates)]
         focused_scores = scores[len(candidates) :]
         rescored: list[HybridResult] = []
-        for index, (candidate, full_score) in enumerate(
-            zip(candidates, full_scores, strict=True)
-        ):
+        for index, (candidate, full_score) in enumerate(zip(candidates, full_scores, strict=True)):
             window = focused_windows[index] if focused_windows else None
             focused_score = float(focused_scores[index]) if focused_windows else None
             base_score = float(full_score)
             if focused_score is not None:
                 base_score = (
-                    (1.0 - config.focused_window_weight) * base_score
-                    + config.focused_window_weight * focused_score
-                )
+                    1.0 - config.focused_window_weight
+                ) * base_score + config.focused_window_weight * focused_score
             section_score = section_adjustment(
                 candidate.record.section_type,
                 intent,
@@ -293,15 +289,10 @@ class BGEReranker:
         """Drop lower-ranked chunks with cosine similarity above the threshold."""
 
         config = self.signal_config
-        if (
-            self.focus_embedder is None
-            or len(ranked) < 2
-        ):
+        if self.focus_embedder is None or len(ranked) < 2:
             return ranked
         vectors = np.asarray(
-            self.focus_embedder.embed_documents(
-                [result.record.text for result in ranked]
-            ),
+            self.focus_embedder.embed_documents([result.record.text for result in ranked]),
             dtype=float,
         )
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
@@ -317,8 +308,7 @@ class BGEReranker:
                         kept_vectors,
                         strict=True,
                     )
-                    if float(np.dot(vector, kept_vector))
-                    > config.near_duplicate_threshold
+                    if float(np.dot(vector, kept_vector)) > config.near_duplicate_threshold
                 ),
                 None,
             )
@@ -359,9 +349,7 @@ class BGEReranker:
         top_score = ranked[0].rerank_score or 0.0
         for result in ranked[1:]:
             current_score = result.rerank_score or 0.0
-            represented_products = {
-                item.record.product_name for item in selected
-            }
+            represented_products = {item.record.product_name for item in selected}
             relative_gap = top_score - current_score
             if len(selected) == 1:
                 cutoff = (
@@ -423,11 +411,7 @@ class BGEReranker:
         if required_products:
             for product in required_products:
                 match = next(
-                    (
-                        result
-                        for result in hybrid_ranked
-                        if result.record.product_name == product
-                    ),
+                    (result for result in hybrid_ranked if result.record.product_name == product),
                     None,
                 )
                 if match is not None:
@@ -437,9 +421,7 @@ class BGEReranker:
         for result in hybrid_ranked:
             if len(protected) >= protected_count:
                 break
-            if result.record.chunk_id not in {
-                item.record.chunk_id for item in protected
-            }:
+            if result.record.chunk_id not in {item.record.chunk_id for item in protected}:
                 protected.append(result)
         protected_ids = {result.record.chunk_id for result in protected}
         retained = list(protected)
@@ -570,14 +552,14 @@ class BGEReranker:
             )
             scored_by_product = {
                 product: self._score_candidates(
-                        query,
-                        [
-                            candidate
-                            for candidate in candidates
-                            if candidate.record.product_name == product
-                        ],
-                        rerank_query=scoped_queries[product],
-                    )
+                    query,
+                    [
+                        candidate
+                        for candidate in candidates
+                        if candidate.record.product_name == product
+                    ],
+                    rerank_query=scoped_queries[product],
+                )
                 for product in detected_products
             }
             ranked_by_product = {
@@ -590,9 +572,7 @@ class BGEReranker:
                 if candidate.record.product_name not in detected_products
             ]
             fallback = (
-                self._remove_near_duplicates(
-                    self._score_candidates(query, fallback_candidates)
-                )
+                self._remove_near_duplicates(self._score_candidates(query, fallback_candidates))
                 if fallback_candidates
                 else []
             )
@@ -608,9 +588,7 @@ class BGEReranker:
                 minimum_results=minimum_results,
             )
             scored = [
-                result
-                for product in detected_products
-                for result in scored_by_product[product]
+                result for product in detected_products for result in scored_by_product[product]
             ]
             if scored and all(result.intent_anchor_score == 0.0 for result in scored):
                 selected = self._protect_hybrid_results(
