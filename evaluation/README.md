@@ -37,31 +37,33 @@ newer Python release.
 
 ## Run
 
+Generation and scoring are separate stages so that one answer set can be
+judged repeatedly without being regenerated:
+
 ```bash
 cd /Users/irishe/Documents/ChatGPT/RAG/Insurance-Product-RAG
-backend/.venv/bin/python evaluation/run_evaluation.py
+backend/.venv/bin/python evaluation/run_evaluation.py generate
+backend/.venv/bin/python evaluation/run_evaluation.py score
+backend/.venv/bin/python evaluation/run_evaluation.py report
 ```
 
-Quick test:
-
-```bash
-backend/.venv/bin/python evaluation/run_evaluation.py --limit 3
-```
+`all` (the default stage) runs generate then score.
 
 ## Checkpoint and resume
 
-The runner atomically checkpoints every successful question to
+The runner atomically checkpoints every question to
+`evaluation/results/generation_artifacts.json` and
 `evaluation/results/evaluation_results.json`. If a run is interrupted, resume
-from the next unprocessed question with:
+with:
 
 ```bash
-backend/.venv/bin/python evaluation/run_evaluation.py --resume
+backend/.venv/bin/python evaluation/run_evaluation.py score --resume
 ```
 
-Use the same `--limit`, `--golden`, and judge options as the original run. Do
-not start a resume process while the original evaluation is still running.
-Failed rows and incomplete RAGAS scores are retried automatically. Condensed
-historical summary files are ignored as checkpoints instead of causing resume
-to fail.
+Use the same `--golden` and judge options as the original run; a resume whose
+configuration or judge model IDs differ from the checkpoint fails loudly
+rather than mixing runs. Do not start a resume process while the original
+evaluation is still running. Add `--retry-provider-errors` to re-score
+questions whose metrics ended in `provider_error` or `parse_error`.
 
 Outputs are written only to `evaluation/results/` and `evaluation/reports/`.

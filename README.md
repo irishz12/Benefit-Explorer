@@ -144,26 +144,85 @@ the policy is in force and all premiums are current [2].
 | Backend | Python, FastAPI, Pydantic, Uvicorn |
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui primitives |
 | Streaming | NDJSON through a server-side Next.js proxy |
-| Evaluation | RAGAS plus deterministic Context Recall@4 |
+| Evaluation | RAGAS judged by Qwen3 32B and GPT OSS 120B, plus deterministic Context Recall@4 |
 
 ## Evaluation results
 
-The final evaluation set contains **30 questions across six insurance
-products**. Answers were assessed using exactly three metrics.
+The evaluation set contains **30 questions across six insurance products**,
+frozen into a 20-question development split and a 10-question holdout split
+before this run. The two splits are reported separately and never pooled.
 
-| Metric | Score |
-|---|---:|
-| Faithfulness (RAGAS) | **0.936** |
-| Context Recall@4 (legacy flat chunk labels) | **0.837** |
-| Answer Correctness (RAGAS) | **0.725** |
+Every answer is scored by two judges:
 
-Faithfulness and Answer Correctness were available for 29 questions because
-one prior RAGAS judge request failed; Context Recall@4 was available for all 30.
-The evaluation code now uses evidence-group recall so overlapping chunks count
-as alternatives rather than separate required hits. The historical `0.837`
-recall value predates that correction and must be recalculated on the next full
-run; it is retained only for transparent comparison. These results should not
-be treated as a universal benchmark.
+- **Self-judge** — `qwen.qwen3-32b`, the generation model grading its own output
+- **Independent judge** — `openai.gpt-oss-120b`, a different model family
+
+Both judges run on Amazon Bedrock Mantle. The runner refuses to start if the
+independent judge is the same model as, or from the same family as, the
+generator.
+
+### Answered questions
+
+Generation failed on 4 of 30 questions, so no metric below covers all 30.
+
+| Split | Questions | Answered | Generation failures |
+|---|---:|---:|---|
+| Dev | 20 | 18 | Q032, Q036 |
+| Holdout | 10 | 8 | Q012, Q031 |
+
+All four failures are `CitationValidationError`: the model produced an answer
+whose quoted `supporting_text` could not be verified against its declared
+chunk at the 82% fuzzy threshold, or produced no verified citation from one
+compared product's own chunks. **Three of the four are Cross-Product
+Comparison questions** — 3 of the 6 questions of that type failed, against 1
+of the remaining 24 questions. A comparison answer must clear the verbatim
+citation bar once per product, so it carries twice the exposure. Retrieval is
+not the cause: re-running retrieval for the four shows both compared products
+present in the final contexts, and full evidence coverage for Q032 and Q036.
+This exclusion is not random with respect to question type and every figure
+below is conditioned on it.
+
+### Dev split (18 answered of 20)
+
+| Metric | Self-judge | Independent judge | Self − independent | Paired n |
+|---|---:|---:|---:|---:|
+| Faithfulness | 0.964 | 0.954 | +0.011 | 18 |
+| Answer Correctness | 0.710 | 0.722 | −0.012 | 18 |
+| Context Recall@4 | 0.972 (deterministic, no judge) | — | — | 18 |
+
+### Holdout split (8 answered of 10)
+
+The holdout is small. These are counts, not rates, and one question moves a
+mean by more than 0.12.
+
+| Metric | Result |
+|---|---|
+| Faithfulness = 1.000 | self **6 of 8**, independent **6 of 8** |
+| Faithfulness mean | self 0.912, independent 0.804, paired n = 8 |
+| Answer Correctness mean | self 0.758, independent 0.701, paired n = 8 |
+| Context Recall@4 | all evidence groups covered on **7 of 8**; 0.875 mean |
+
+The −0.109 faithfulness gap on the holdout comes from one question, Q003,
+where the independent judge scored 0.000 and the self-judge 1.000; Q016 runs
+the other way. With n = 8 this is a disagreement on two questions, not a
+measured trend.
+
+### Judge reliability
+
+Both judges returned a score for **every** answered question on **both**
+metrics: 104 of 104 scores, 0 provider errors, 0 parse errors, 0 metric
+errors. No paired delta above drops any question, so paired n equals the
+answered count in every row.
+
+Reaching that took one fix. Under `response_format: json_object` Bedrock
+Mantle prefills the start of the JSON object and `gpt-oss-120b` then emits a
+complete object of its own, so the reply carries two openings and will not
+parse. The defect is deterministic at temperature 0, so retrying cannot clear
+it; the evaluator repairs the reply before parsing instead. See
+`evaluation/README.md`.
+
+These results measure this pipeline on this brochure set and should not be
+treated as a universal benchmark.
 
 ## Supported brochure set
 
@@ -379,6 +438,8 @@ usable evidence. See `evaluation/golden/LABELING.md` for the labeling policy.
 - The system has no live policy-account, underwriting, claims, or insurer-system integration.
 - OCR and complex PDF tables can introduce extraction or chunk-boundary errors.
 - Multi-part and cross-product questions can receive incomplete answers when one clause is not retrieved.
+- Citation validation rejects whole answers, and it rejects cross-product comparisons disproportionately: 3 of 6 such questions failed to produce a verifiable answer, against 1 of the other 24. Reported metrics therefore exclude a non-random slice of the question set.
+- The holdout split has 10 questions and 8 answered ones, which is too few for a rate; it is reported as counts.
 - Context Recall@4 depends on manually maintained evidence-group labels.
 - RAGAS metrics use a model judge and may vary across judge models or provider versions.
 - Answer Correctness remains the weakest measured metric, especially for multi-part questions.
