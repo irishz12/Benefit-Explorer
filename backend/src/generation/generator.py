@@ -383,6 +383,7 @@ class QARun:
     final_contexts: tuple[HybridResult, ...]
     detected_products: tuple[str, ...] = ()
     product_retrieval_mode: str = "none"
+    retrieval_trace: tuple[HybridResult, ...] = ()
 
 
 class GroundedQAPipeline:
@@ -440,4 +441,5 @@ class GroundedQAPipeline:
             tuple(final_contexts),
             detected_products,
             retrieval.mode,
+            tuple(candidates),
         )

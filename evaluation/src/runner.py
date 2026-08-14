@@ -1,11 +1,13 @@
-"""End-to-end BenefitExplorer evaluation orchestration."""
+"""Auditable generation, dual-judge scoring, and reporting orchestration."""
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -19,284 +21,437 @@ if str(BACKEND_DIR) not in sys.path:
 
 from src.main import DEFAULT_AWS_REGION, DEFAULT_MANTLE_MODEL, build_pipeline, get_rag_components
 
-from .context_recall import context_recall_at_4
-from .dataset import GoldenQuestion, load_golden_dataset, validate_relevant_chunk_ids
-from .report import aggregate_metrics, print_summary, rank_worst, write_csv, write_json, write_markdown
+from .artifacts import (
+    ARTIFACT_SCHEMA_VERSION,
+    build_generation_configuration,
+    load_generation_checkpoint,
+    question_fingerprint,
+)
+from .dataset import (
+    GoldenQuestion,
+    load_evaluation_splits,
+    load_golden_dataset,
+    validate_relevant_chunk_ids,
+)
+from .report import aggregate_dual_judges, print_summary, write_csv, write_json, write_markdown
 
 EVALUATION_DIR = PROJECT_ROOT / "evaluation"
 DEFAULT_GOLDEN = EVALUATION_DIR / "golden" / "golden_questions.json"
+DEFAULT_SPLITS = EVALUATION_DIR / "golden" / "splits.json"
+DEFAULT_ARTIFACTS = EVALUATION_DIR / "results" / "generation_artifacts.json"
 DEFAULT_RESULTS = EVALUATION_DIR / "results" / "evaluation_results.json"
 DEFAULT_CSV = EVALUATION_DIR / "results" / "per_question_metrics.csv"
 DEFAULT_REPORT = EVALUATION_DIR / "reports" / "evaluation_summary.md"
-
-
-def _format_metric(name: str, value: float | None) -> str:
-    return f"{name}={value:.3f}" if value is not None else f"{name}=N/A"
+DEFAULT_NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+DEFAULT_INDEPENDENT_JUDGE = "meta/llama-3.1-70b-instruct"
+RESULT_SCHEMA_VERSION = 3
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Evaluate BenefitExplorer with three metrics.")
-    parser.add_argument("--golden", type=Path, default=DEFAULT_GOLDEN)
-    parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--k", type=int, default=4, choices=(4,))
-    parser.add_argument("--judge-model", default=None)
-    parser.add_argument("--ragas-timeout", type=float, default=180.0)
-    parser.add_argument("--worst-count", type=int, default=5)
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Resume from evaluation/results/evaluation_results.json.",
+    parser = argparse.ArgumentParser(
+        description="Generate once, then evaluate stored BenefitExplorer answers with two judges."
     )
+    parser.add_argument(
+        "stage",
+        nargs="?",
+        choices=("generate", "score", "report", "all"),
+        default="all",
+    )
+    parser.add_argument("--golden", type=Path, default=DEFAULT_GOLDEN)
+    parser.add_argument("--splits", type=Path, default=DEFAULT_SPLITS)
+    parser.add_argument("--artifacts", type=Path, default=DEFAULT_ARTIFACTS)
+    parser.add_argument("--results", type=Path, default=DEFAULT_RESULTS)
+    parser.add_argument("--csv", type=Path, default=DEFAULT_CSV)
+    parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--retry-provider-errors", action="store_true")
+    parser.add_argument(
+        "--continue-after-provider-error",
+        action="store_true",
+        help="Continue to later questions after exhausted provider retries.",
+    )
+    parser.add_argument("--independent-judge-model", default=None)
+    parser.add_argument("--independent-base-url", default=None)
+    parser.add_argument("--ragas-timeout", type=float, default=180.0)
+    parser.add_argument("--judge-max-attempts", type=int, default=4)
+    parser.add_argument("--judge-backoff-seconds", type=float, default=3.0)
     return parser
 
 
-def _load_checkpoint(
-    path: Path,
-    questions: list[GoldenQuestion],
-) -> dict[str, dict[str, Any]]:
-    """Load reusable successful rows, retrying failed or legacy summary rows."""
-
-    if not path.exists():
-        raise FileNotFoundError(
-            f"No evaluation checkpoint exists at {path}. Run without --resume first."
-        )
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        raise ValueError(f"Evaluation checkpoint is not valid JSON: {path}") from error
-    saved_rows = payload.get("questions")
-    if not isinstance(saved_rows, list):
-        raise ValueError(f"Evaluation checkpoint has no question rows: {path}")
-
-    current = {question.question_id: question for question in questions}
-    checkpoint: dict[str, dict[str, Any]] = {}
-    for row in saved_rows:
-        if not isinstance(row, dict) or not isinstance(row.get("question_id"), str):
-            raise ValueError("Evaluation checkpoint contains an invalid question row")
-        question_id = row["question_id"]
-        golden = current.get(question_id)
-        if golden is None:
-            # A checkpoint created with a larger --limit can safely be ignored
-            # when resuming a smaller subset.
-            continue
-        if question_id in checkpoint:
-            raise ValueError(f"Duplicate checkpoint row for {question_id}")
-        # Condensed historical reports contain metrics only and cannot be used
-        # as generation checkpoints. Treat them as unprocessed instead of
-        # failing the entire resume operation.
-        required_fields = {
-            "question",
-            "reference_answer",
-            "relevant_chunk_ids",
-            "generated_answer",
-            "selected_contexts",
-            "metrics",
-        }
-        if not required_fields.issubset(row):
-            continue
-        # Failed pipeline rows and partial RAGAS rows are retried on resume.
-        metrics = row.get("metrics")
-        if row.get("error") is not None or not isinstance(metrics, dict):
-            continue
-        if any(
-            metrics.get(metric) is None
-            for metric in ("faithfulness", "context_recall_at_4", "answer_correctness")
-        ):
-            continue
-
-        expected = {
-            "question": golden.question,
-            "reference_answer": golden.reference_answer,
-            "relevant_chunk_ids": list(golden.relevant_chunk_ids),
-        }
-        mismatched = [key for key, value in expected.items() if row.get(key) != value]
-        if mismatched:
-            fields = ", ".join(mismatched)
-            raise ValueError(
-                f"Checkpoint row {question_id} does not match the current golden "
-                f"dataset ({fields}). Start a fresh run without --resume."
-            )
-        selected_contexts = row.get("selected_contexts")
-        if not isinstance(selected_contexts, list):
-            continue
-        selected_ids = [
-            str(context.get("chunk_id"))
-            for context in selected_contexts
-            if isinstance(context, dict) and context.get("chunk_id")
-        ]
-        normalized = dict(row)
-        normalized["relevant_evidence_groups"] = [
-            {
-                "evidence_id": group.evidence_id,
-                "description": group.description,
-                "chunk_ids": list(group.chunk_ids),
-            }
-            for group in golden.relevant_evidence_groups
-        ]
-        normalized["metrics"] = {
-            **metrics,
-            "context_recall_at_4": context_recall_at_4(
-                selected_ids,
-                golden.relevant_evidence_groups,
-            ),
-        }
-        checkpoint[question_id] = normalized
-    return checkpoint
+def _load_inputs(args: argparse.Namespace) -> tuple[list[GoldenQuestion], dict[str, str]]:
+    questions = load_golden_dataset(args.golden)
+    splits = load_evaluation_splits(args.splits, questions)
+    split_by_id = {
+        **{question_id: "dev" for question_id in splits.dev_question_ids},
+        **{question_id: "holdout" for question_id in splits.holdout_question_ids},
+    }
+    return questions, split_by_id
 
 
-async def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
-    if args.limit is not None and args.limit < 1:
-        raise ValueError("--limit must be positive")
-    if args.worst_count < 1:
-        raise ValueError("--worst-count must be positive")
+def _generation_payload(
+    configuration: dict[str, Any],
+    rows: list[dict[str, Any]],
+    question_count: int,
+    status: str,
+) -> dict[str, Any]:
+    return {
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "status": status,
+        "checkpointed_at": datetime.now(UTC).isoformat(),
+        "configuration": configuration,
+        "question_count": question_count,
+        "completed": len(rows),
+        "questions": rows,
+    }
+
+
+def _citation_payload(citation: Any) -> dict[str, Any]:
+    return {
+        "index": citation.index,
+        "chunk_id": citation.chunk_id,
+        "product": citation.product,
+        "page": citation.page,
+        "supporting_text": citation.supporting_text,
+    }
+
+
+async def generate_artifacts(args: argparse.Namespace) -> dict[str, Any]:
+    """Run the RAG pipeline once and atomically retain all auditable artifacts."""
 
     load_dotenv(BACKEND_DIR / ".env", override=True)
-    api_key = os.getenv("AWS_BEARER_TOKEN_BEDROCK")
-    if not api_key:
-        raise RuntimeError("AWS_BEARER_TOKEN_BEDROCK is required in backend/.env")
+    questions, split_by_id = _load_inputs(args)
     region = os.getenv("AWS_REGION", DEFAULT_AWS_REGION)
-    base_url = os.getenv("OPENAI_BASE_URL", f"https://bedrock-mantle.{region}.api.aws/v1")
-    judge_model = args.judge_model or os.getenv("RAGAS_JUDGE_MODEL") or os.getenv(
-        "MANTLE_MODEL", DEFAULT_MANTLE_MODEL
+    generation_base_url = os.getenv(
+        "OPENAI_BASE_URL",
+        f"https://bedrock-mantle.{region}.api.aws/v1",
     )
-
-    questions = load_golden_dataset(args.golden, args.limit)
-    checkpoint = _load_checkpoint(DEFAULT_RESULTS, questions) if args.resume else {}
-    if checkpoint:
-        print(
-            f"Resuming from checkpoint: {len(checkpoint)}/{len(questions)} "
-            "questions already processed.",
-            flush=True,
-        )
     pipeline = build_pipeline()
     retriever, _ = get_rag_components()
-    chunk_lookup = {record.chunk_id: record for record in retriever.records}
-    validate_relevant_chunk_ids(questions, set(chunk_lookup))
-    # Keep RAGAS optional at import time so --help and golden validation remain
-    # usable before evaluation dependencies are installed.
-    from .ragas_metrics import RagasEvaluator
-
-    ragas = RagasEvaluator(
-        retriever.vector_store.embedder,
-        judge_model,
-        api_key,
-        base_url,
-        args.ragas_timeout,
+    validate_relevant_chunk_ids(questions, {record.chunk_id for record in retriever.records})
+    configuration = build_generation_configuration(
+        pipeline,
+        PROJECT_ROOT,
+        args.golden,
+        args.golden.with_name("evidence_groups.json"),
+        args.splits,
+        generation_base_url,
     )
-
+    checkpoint = (
+        load_generation_checkpoint(
+            args.artifacts,
+            questions,
+            split_by_id,
+            configuration["config_hash"],
+        )
+        if args.resume
+        else {}
+    )
     rows: list[dict[str, Any]] = []
     for position, golden in enumerate(questions, start=1):
         saved = checkpoint.get(golden.question_id)
         if saved is not None:
             rows.append(saved)
-            print(
-                f"[{position:02d}/{len(questions):02d}] {golden.question_id} "
-                "CHECKPOINT — skipped",
-                flush=True,
-            )
+            print(f"[{position:02d}/30] {golden.question_id} GENERATION CHECKPOINT", flush=True)
             continue
-        print(f"[{position:02d}/{len(questions):02d}] {golden.question_id}", flush=True)
+
+        split = split_by_id[golden.question_id]
+        print(f"[{position:02d}/30] {golden.question_id} generating ({split})", flush=True)
+        started = time.monotonic()
+        base_row: dict[str, Any] = {
+            "question_id": golden.question_id,
+            "split": split,
+            "question": golden.question,
+            "reference_answer": golden.reference_answer,
+            "relevant_chunk_ids": list(golden.relevant_chunk_ids),
+            "relevant_evidence_groups": [
+                {
+                    "evidence_id": group.evidence_id,
+                    "description": group.description,
+                    "chunk_ids": list(group.chunk_ids),
+                }
+                for group in golden.relevant_evidence_groups
+            ],
+            "question_fingerprint": question_fingerprint(golden, split),
+            "generation_model_id": configuration["generation_model_id"],
+            "config_hash": configuration["config_hash"],
+        }
         try:
-            run = pipeline.answer(golden.question)
-            contexts = list(run.final_contexts[:4])
-            selected_ids = [context.record.chunk_id for context in contexts]
-            ragas_scores = await ragas.score(
-                golden.question,
-                run.response.answer,
-                golden.reference_answer,
-                [context.record.text for context in contexts],
-            )
-            metrics: dict[str, float | None] = {
-                "faithfulness": ragas_scores.faithfulness,
-                "context_recall_at_4": context_recall_at_4(
-                    selected_ids, golden.relevant_evidence_groups
-                ),
-                "answer_correctness": ragas_scores.answer_correctness,
-            }
+            run = await asyncio.to_thread(pipeline.answer, golden.question)
             row = {
-                "question_id": golden.question_id,
-                "question": golden.question,
-                "reference_answer": golden.reference_answer,
+                **base_row,
                 "generated_answer": run.response.answer,
-                "relevant_chunk_ids": list(golden.relevant_chunk_ids),
-                "relevant_evidence_groups": [
-                    {
-                        "evidence_id": group.evidence_id,
-                        "description": group.description,
-                        "chunk_ids": list(group.chunk_ids),
-                    }
-                    for group in golden.relevant_evidence_groups
-                ],
-                "selected_contexts": [context.to_dict() for context in contexts],
-                "metrics": metrics,
-                "ragas_errors": list(ragas_scores.errors),
-                "error": None,
+                "citations": [_citation_payload(citation) for citation in run.response.citations],
+                "selected_contexts": [context.to_dict() for context in run.final_contexts[:4]],
+                "retrieval_trace": [candidate.to_dict() for candidate in run.retrieval_trace],
+                "detected_products": list(run.detected_products),
+                "product_retrieval_mode": run.product_retrieval_mode,
+                "generation_seconds": round(time.monotonic() - started, 3),
+                "generated_at": datetime.now(UTC).isoformat(),
+                "generation_error": None,
             }
-            print(
-                "  " + "  ".join(_format_metric(name, value) for name, value in metrics.items()),
-                flush=True,
-            )
         except Exception as error:
             row = {
-                "question_id": golden.question_id,
-                "question": golden.question,
-                "reference_answer": golden.reference_answer,
+                **base_row,
                 "generated_answer": None,
-                "relevant_chunk_ids": list(golden.relevant_chunk_ids),
-                "relevant_evidence_groups": [
-                    {
-                        "evidence_id": group.evidence_id,
-                        "description": group.description,
-                        "chunk_ids": list(group.chunk_ids),
-                    }
-                    for group in golden.relevant_evidence_groups
-                ],
+                "citations": [],
                 "selected_contexts": [],
-                "metrics": {
-                    "faithfulness": None,
-                    "context_recall_at_4": None,
-                    "answer_correctness": None,
-                },
-                "ragas_errors": [],
-                "error": f"{type(error).__name__}: {error}",
+                "retrieval_trace": [],
+                "detected_products": [],
+                "product_retrieval_mode": "error",
+                "generation_seconds": round(time.monotonic() - started, 3),
+                "generated_at": datetime.now(UTC).isoformat(),
+                "generation_error": f"{type(error).__name__}: {error}",
             }
-            print(f"  FAILED: {row['error']}", flush=True)
+            print(f"  generation failed: {row['generation_error']}", flush=True)
         rows.append(row)
-        write_json(
-            {
-                "schema_version": 2,
-                "status": "running",
-                "completed": len(rows),
-                "question_count": len(questions),
-                "checkpointed_at": datetime.now(UTC).isoformat(),
-                "questions": rows,
-            },
-            DEFAULT_RESULTS,
+        write_json(_generation_payload(configuration, rows, len(questions), "running"), args.artifacts)
+
+    payload = _generation_payload(configuration, rows, len(questions), "complete")
+    payload["generation_success_n"] = sum(row["generation_error"] is None for row in rows)
+    write_json(payload, args.artifacts)
+    return payload
+
+
+def _load_artifacts(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise FileNotFoundError(
+            f"Generation artifacts not found at {path}. Run the generate stage first."
+        ) from error
+    if payload.get("schema_version") != ARTIFACT_SCHEMA_VERSION:
+        raise ValueError(f"Unsupported generation artifact schema in {path}")
+    rows = payload.get("questions")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError(f"Generation artifact contains no question rows: {path}")
+    return payload
+
+
+def assert_independent_judge(generation_model_id: str, judge_model_id: str) -> None:
+    if generation_model_id.strip().casefold() == judge_model_id.strip().casefold():
+        raise ValueError(
+            "Independent judge model must differ from the generation model: "
+            f"both resolve to {generation_model_id!r}."
         )
 
-    completed = [row for row in rows if row["error"] is None]
-    judge_failures = sum(bool(row["ragas_errors"]) for row in rows)
-    generated_at = datetime.now(UTC).isoformat()
-    report = {
-        "schema_version": 2,
-        "generated_at": generated_at,
-        "status": "complete",
-        "configuration": {
-            "golden_dataset": str(args.golden.resolve()),
-            "context_k": 4,
-            "judge_framework": "ragas",
-            "judge_model": judge_model,
-        },
-        "question_count": len(questions),
-        "evaluated": len(completed),
-        "failed": len(rows) - len(completed),
-        "judge_failures": judge_failures,
-        "aggregate_metrics": aggregate_metrics(completed),
-        "worst_questions": rank_worst(rows, args.worst_count),
+
+def _load_score_checkpoint(
+    path: Path,
+    config_hash: str,
+    judge_model_ids: dict[str, str],
+) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema_version") != RESULT_SCHEMA_VERSION:
+        return {}
+    configuration = payload.get("configuration", {})
+    if configuration.get("config_hash") != config_hash:
+        raise ValueError("Score checkpoint was produced from a different generation artifact set")
+    if configuration.get("judge_model_ids") != judge_model_ids:
+        raise ValueError("Score checkpoint uses different judge model IDs")
+    return {
+        row["question_id"]: row
+        for row in payload.get("questions", [])
+        if isinstance(row, dict) and isinstance(row.get("question_id"), str)
+    }
+
+
+def _judge_needs_score(
+    row: dict[str, Any],
+    judge_key: str,
+    retry_provider_errors: bool,
+) -> bool:
+    judge = row.get("judges", {}).get(judge_key)
+    if not isinstance(judge, dict):
+        return True
+    metrics = judge.get("metrics", {})
+    if not {"faithfulness", "answer_correctness"}.issubset(metrics):
+        return True
+    outcomes = metrics.values()
+    statuses = {outcome.get("status") for outcome in outcomes if isinstance(outcome, dict)}
+    if not statuses:
+        return True
+    return retry_provider_errors and "provider_error" in statuses
+
+
+def _has_provider_error(row: dict[str, Any], judge_key: str) -> bool:
+    outcomes = row.get("judges", {}).get(judge_key, {}).get("metrics", {}).values()
+    return any(outcome.get("status") == "provider_error" for outcome in outcomes)
+
+
+def _score_payload(
+    configuration: dict[str, Any],
+    rows: list[dict[str, Any]],
+    status: str,
+) -> dict[str, Any]:
+    payload = {
+        "schema_version": RESULT_SCHEMA_VERSION,
+        "status": status,
+        "checkpointed_at": datetime.now(UTC).isoformat(),
+        "configuration": configuration,
+        "question_count": len(rows),
         "questions": rows,
     }
-    write_json(report, DEFAULT_RESULTS)
-    write_csv(rows, DEFAULT_CSV)
-    write_markdown(report, DEFAULT_REPORT)
+    payload["aggregate_metrics"] = aggregate_dual_judges(rows)
+    return payload
+
+
+async def score_artifacts(args: argparse.Namespace) -> dict[str, Any]:
+    """Score one stored answer set; this function never calls answer generation."""
+
+    load_dotenv(BACKEND_DIR / ".env", override=True)
+    artifacts = _load_artifacts(args.artifacts)
+    artifact_configuration = artifacts["configuration"]
+    generation_model_id = artifact_configuration["generation_model_id"]
+    self_model_id = generation_model_id
+    independent_model_id = (
+        args.independent_judge_model
+        or os.getenv("NVIDIA_JUDGE_MODEL")
+        or DEFAULT_INDEPENDENT_JUDGE
+    )
+    assert_independent_judge(generation_model_id, independent_model_id)
+    judge_model_ids = {"self": self_model_id, "independent": independent_model_id}
+
+    aws_key = os.getenv("AWS_BEARER_TOKEN_BEDROCK")
+    nvidia_key = os.getenv("NVIDIA_API_KEY")
+    if not aws_key:
+        raise RuntimeError("AWS_BEARER_TOKEN_BEDROCK is required for the self-judge")
+    if not nvidia_key:
+        raise RuntimeError("NVIDIA_API_KEY is required for the independent NIM judge")
+    region = os.getenv("AWS_REGION", DEFAULT_AWS_REGION)
+    self_base_url = os.getenv(
+        "OPENAI_BASE_URL",
+        f"https://bedrock-mantle.{region}.api.aws/v1",
+    )
+    independent_base_url = (
+        args.independent_base_url
+        or os.getenv("NVIDIA_BASE_URL")
+        or DEFAULT_NVIDIA_BASE_URL
+    )
+
+    retriever, _ = get_rag_components()
+    from .ragas_metrics import RagasEvaluator
+
+    evaluators = {
+        "self": RagasEvaluator(
+            retriever.vector_store.embedder,
+            self_model_id,
+            aws_key,
+            self_base_url,
+            args.ragas_timeout,
+            args.judge_max_attempts,
+            args.judge_backoff_seconds,
+        ),
+        "independent": RagasEvaluator(
+            retriever.vector_store.embedder,
+            independent_model_id,
+            nvidia_key,
+            independent_base_url,
+            args.ragas_timeout,
+            args.judge_max_attempts,
+            args.judge_backoff_seconds,
+        ),
+    }
+    configuration = {
+        "artifact_path": str(args.artifacts.resolve()),
+        "config_hash": artifact_configuration["config_hash"],
+        "generation_model_id": generation_model_id,
+        "judge_model_ids": judge_model_ids,
+        "judge_framework": "ragas",
+        "judge_concurrency": 1,
+        "judge_max_attempts": args.judge_max_attempts,
+        "judge_backoff_seconds": args.judge_backoff_seconds,
+    }
+    checkpoint = (
+        _load_score_checkpoint(args.results, configuration["config_hash"], judge_model_ids)
+        if args.resume
+        else {}
+    )
+    rows: list[dict[str, Any]] = []
+    stop_for_provider = False
+    for position, artifact in enumerate(artifacts["questions"], start=1):
+        saved = checkpoint.get(artifact["question_id"], {})
+        row = {
+            "question_id": artifact["question_id"],
+            "split": artifact["split"],
+            "question": artifact["question"],
+            "reference_answer": artifact["reference_answer"],
+            "generated_answer": artifact.get("generated_answer"),
+            "selected_contexts": artifact.get("selected_contexts", []),
+            "generation_error": artifact.get("generation_error"),
+            "generation_model_id": generation_model_id,
+            "judge_model_ids": judge_model_ids,
+            "config_hash": configuration["config_hash"],
+            "judges": dict(saved.get("judges", {})),
+        }
+        rows.append(row)
+        if row["generation_error"] is not None:
+            write_json(_score_payload(configuration, rows, "running"), args.results)
+            continue
+
+        contexts = [context["text"] for context in row["selected_contexts"]]
+        for judge_key in ("self", "independent"):
+            if not _judge_needs_score(row, judge_key, args.retry_provider_errors):
+                continue
+            print(
+                f"[{position:02d}/30] {row['question_id']} {judge_key} judge "
+                f"({judge_model_ids[judge_key]})",
+                flush=True,
+            )
+            scores = await evaluators[judge_key].score(
+                row["question"],
+                row["generated_answer"],
+                row["reference_answer"],
+                contexts,
+            )
+            row["judges"][judge_key] = {
+                "model_id": judge_model_ids[judge_key],
+                "metrics": scores.to_dict(),
+                "scored_at": datetime.now(UTC).isoformat(),
+            }
+            write_json(_score_payload(configuration, rows, "running"), args.results)
+            if _has_provider_error(row, judge_key) and not args.continue_after_provider_error:
+                print(
+                    "Provider retries exhausted; checkpoint saved. Resume later with "
+                    "--resume --retry-provider-errors.",
+                    flush=True,
+                )
+                stop_for_provider = True
+                break
+        if stop_for_provider:
+            break
+
+    status = "provider_interrupted" if stop_for_provider else "complete"
+    report = _score_payload(configuration, rows, status)
+    write_json(report, args.results)
+    write_csv(rows, args.csv)
+    write_markdown(report, args.report)
     print_summary(report)
     return report
+
+
+def render_report(args: argparse.Namespace) -> dict[str, Any]:
+    payload = json.loads(args.results.read_text(encoding="utf-8"))
+    rows = payload["questions"]
+    payload["aggregate_metrics"] = aggregate_dual_judges(rows)
+    write_json(payload, args.results)
+    write_csv(rows, args.csv)
+    write_markdown(payload, args.report)
+    print_summary(payload)
+    return payload
+
+
+async def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
+    if args.judge_max_attempts < 1:
+        raise ValueError("--judge-max-attempts must be positive")
+    if args.judge_backoff_seconds < 0:
+        raise ValueError("--judge-backoff-seconds cannot be negative")
+    if args.stage == "generate":
+        return await generate_artifacts(args)
+    if args.stage == "score":
+        return await score_artifacts(args)
+    if args.stage == "report":
+        return render_report(args)
+    await generate_artifacts(args)
+    return await score_artifacts(args)

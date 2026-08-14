@@ -60,6 +60,21 @@ class GoldenQuestion:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class EvaluationSplits:
+    """Frozen development and holdout question identifiers."""
+
+    dev_question_ids: tuple[str, ...]
+    holdout_question_ids: tuple[str, ...]
+
+    def name_for(self, question_id: str) -> str:
+        if question_id in self.dev_question_ids:
+            return "dev"
+        if question_id in self.holdout_question_ids:
+            return "holdout"
+        raise KeyError(f"Question {question_id!r} is absent from the frozen splits")
+
+
 def _string_list(value: object, field: str) -> list[str]:
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError(f"{field!r} must be an array of strings")
@@ -85,6 +100,32 @@ def load_golden_dataset(path: Path, limit: int | None = None) -> list[GoldenQues
     groups_path = path.with_name("evidence_groups.json")
     questions = _attach_evidence_groups(questions, groups_path)
     return questions[:limit]
+
+
+def load_evaluation_splits(
+    path: Path,
+    questions: Sequence[GoldenQuestion],
+) -> EvaluationSplits:
+    """Load and validate the immutable dev/holdout partition."""
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise FileNotFoundError(f"Evaluation split manifest not found: {path}") from error
+    if not isinstance(payload, Mapping):
+        raise ValueError(f"Expected a JSON object in {path}")
+    dev_ids = tuple(_string_list(payload.get("dev_question_ids"), "dev_question_ids"))
+    holdout_ids = tuple(
+        _string_list(payload.get("holdout_question_ids"), "holdout_question_ids")
+    )
+    if len(dev_ids) != 20 or len(holdout_ids) != 10:
+        raise ValueError("Frozen evaluation split must contain 20 dev and 10 holdout IDs")
+    if set(dev_ids).intersection(holdout_ids):
+        raise ValueError("Development and holdout splits must be disjoint")
+    golden_ids = {question.question_id for question in questions}
+    if set(dev_ids).union(holdout_ids) != golden_ids:
+        raise ValueError("Frozen splits must cover the golden dataset exactly")
+    return EvaluationSplits(dev_ids, holdout_ids)
 
 
 def _attach_evidence_groups(
