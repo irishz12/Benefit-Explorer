@@ -1,6 +1,6 @@
 -c constraints.txt
 -r requirements.txt
 
-pytest==8.4.2
+pytest==9.0.3
 httpx==0.28.1
 ruff==0.8.4
