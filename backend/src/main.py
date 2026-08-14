@@ -54,6 +54,21 @@ class ChatResponse(BaseModel):
     retrieval_mode: str
 
 
+def resolve_chroma_dir(configured: str | None) -> Path:
+    """Resolve the index location against `backend/`, not the working directory.
+
+    `CHROMA_PERSIST_DIR` is documented as `data/chroma_db`. The API is started
+    from `backend/` and the evaluation from the repository root, so a relative
+    value would otherwise point at two different directories and the evaluation
+    would report an empty collection.
+    """
+
+    if not configured:
+        return DEFAULT_CHROMA
+    path = Path(configured).expanduser()
+    return path if path.is_absolute() else BACKEND_DIR / path
+
+
 @lru_cache(maxsize=1)
 def get_rag_components() -> tuple[HybridRetriever, BGEReranker]:
     """Load the large local retrieval and reranking models once."""
@@ -64,7 +79,7 @@ def get_rag_components() -> tuple[HybridRetriever, BGEReranker]:
         show_progress=False,
     )
     store = ChromaVectorStore(
-        Path(os.getenv("CHROMA_PERSIST_DIR", DEFAULT_CHROMA)),
+        resolve_chroma_dir(os.getenv("CHROMA_PERSIST_DIR")),
         embedder,
         os.getenv("CHROMA_COLLECTION", "insurance_products"),
     )
