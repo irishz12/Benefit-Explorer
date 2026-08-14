@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import json
 import math
 import os
 from dataclasses import asdict, dataclass
@@ -107,6 +108,52 @@ def _parse_error(error: Exception) -> bool:
     return _matches(error, PARSE_ERROR_TYPES)
 
 
+def repair_json_object(content: str) -> str:
+    """Recover the judge's JSON object from a duplicated opening brace.
+
+    Under `response_format={"type": "json_object"}` Bedrock Mantle prefills the
+    start of the object (`{`, `{\\n`, or `{\\n  "`) and gpt-oss-120b then emits a
+    complete object of its own, so the reply carries two openings and cannot
+    parse. The defect is deterministic, so resampling never clears it; the
+    intact object always begins at a later `{`.
+    """
+
+    text = content.strip()
+    try:
+        json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    else:
+        return content
+    for index in range(1, len(text)):
+        if text[index] != "{":
+            continue
+        candidate = text[index:]
+        try:
+            json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        return candidate
+    return content
+
+
+def _install_json_repair(client: OpenAI) -> None:
+    """Repair malformed structured replies before the parser ever sees them."""
+
+    completions = client.chat.completions
+    original_create = completions.create
+
+    def create(*args: Any, **kwargs: Any) -> Any:
+        completion = original_create(*args, **kwargs)
+        for choice in getattr(completion, "choices", []):
+            content = getattr(getattr(choice, "message", None), "content", None)
+            if isinstance(content, str) and content:
+                choice.message.content = repair_json_object(content)
+        return completion
+
+    completions.create = create
+
+
 class RagasEvaluator:
     """Run official RAGAS metrics with bounded exponential provider retries."""
 
@@ -139,6 +186,7 @@ class RagasEvaluator:
         # provider pressure and makes the number of attempts auditable.
         run_config = RunConfig(timeout=timeout, max_retries=0)
         client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
+        _install_json_repair(client)
         judge_llm = llm_factory(
             model,
             provider="openai",
