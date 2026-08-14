@@ -17,16 +17,23 @@ judge with `INDEPENDENT_JUDGE_MODEL` or `--independent-judge-model`; the runner
 refuses any judge that is the same id as, or from the same model family as, the
 generator.
 
-Judges are given a 16K output-token ceiling because the RAGAS prompts return
-structured output. A malformed structured reply is re-asked in place by
-instructor (`--judge-repair-attempts`, default 3) and then resampled by the
-outer retry loop; a reply that still fails to parse is recorded as
-`parse_error` rather than being silently averaged away.
+RAGAS prompts return structured output, so judges are given a 16K output-token
+ceiling (`--judge-max-output-tokens`, or `RAGAS_MAX_OUTPUT_TOKENS`).
+
+Structured replies are defended in three layers. Mantle prefills the opening of
+the JSON object under `response_format: json_object`, and a judge that then
+emits a complete object of its own produces two openings; the evaluator
+recovers the intact object before parsing. A reply that is malformed some other
+way is re-asked in place by instructor with the validation error attached
+(`--judge-repair-attempts`, default 3), then resampled by the outer retry loop.
+A reply that still will not parse is recorded as `parse_error` rather than
+being silently averaged away.
 
 ## Install
 
+Run every command below from the repository root:
+
 ```bash
-cd /Users/irishe/Documents/ChatGPT/RAG/Insurance-Product-RAG
 backend/.venv/bin/pip install -r evaluation/requirements.txt
 ```
 
@@ -41,7 +48,6 @@ Generation and scoring are separate stages so that one answer set can be
 judged repeatedly without being regenerated:
 
 ```bash
-cd /Users/irishe/Documents/ChatGPT/RAG/Insurance-Product-RAG
 backend/.venv/bin/python evaluation/run_evaluation.py generate
 backend/.venv/bin/python evaluation/run_evaluation.py score
 backend/.venv/bin/python evaluation/run_evaluation.py report

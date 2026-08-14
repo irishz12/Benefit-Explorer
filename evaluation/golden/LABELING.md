@@ -2,8 +2,8 @@
 
 `golden_questions.json` contains the questions and flat, auditable chunk labels.
 `evidence_groups.json` is the evidence source of truth for Context Recall@4.
-Faithfulness is evaluated against the final contexts selected by the live RAG
-pipeline. Faithfulness and Answer Correctness are computed by RAGAS.
+Faithfulness is evaluated against the final contexts the RAG pipeline selected
+for each answer. Faithfulness and Answer Correctness are computed by RAGAS.
 
 ## Relevance rule
 

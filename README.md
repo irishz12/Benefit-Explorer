@@ -148,81 +148,42 @@ the policy is in force and all premiums are current [2].
 
 ## Evaluation results
 
-The evaluation set contains **30 questions across six insurance products**,
-frozen into a 20-question development split and a 10-question holdout split
-before this run. The two splits are reported separately and never pooled.
+The golden set holds 30 questions across six products, split into 20
+development and 10 holdout questions that are reported separately. Generation
+produced a citation-verifiable answer for 26 of the 30: 18 of 20 dev (Q032 and
+Q036 failed) and 8 of 10 holdout (Q012 and Q031 failed). Every figure below
+covers only the answered questions.
 
-Every answer is scored by two judges:
+Answers come from `qwen.qwen3-32b`. Each one is scored twice, by
+`qwen.qwen3-32b` as the self-judge and `openai.gpt-oss-120b` as the
+independent judge, both on Amazon Bedrock Mantle. The runner rejects an
+independent judge that shares the generator's model id or model family.
 
-- **Self-judge** — `qwen.qwen3-32b`, the generation model grading its own output
-- **Independent judge** — `openai.gpt-oss-120b`, a different model family
+| Split | Metric | n | Self-judge | Independent judge | Self − independent |
+|---|---|---:|---:|---:|---:|
+| Dev | Faithfulness | 18 | 0.964 | 0.954 | +0.011 |
+| Dev | Answer Correctness | 18 | 0.710 | 0.722 | −0.012 |
+| Dev | Context Recall@4 | 18 | 0.972 | — | — |
+| Holdout | Faithfulness | 8 | 0.912 | 0.804 | +0.109 |
+| Holdout | Answer Correctness | 8 | 0.758 | 0.701 | +0.057 |
+| Holdout | Context Recall@4 | 8 | 0.875 | — | — |
 
-Both judges run on Amazon Bedrock Mantle. The runner refuses to start if the
-independent judge is the same model as, or from the same family as, the
-generator.
+Context Recall@4 is deterministic and uses no judge. Both judges returned a
+score for every answered question on both judged metrics, 104 of 104, so every
+paired n equals the answered count.
 
-### Answered questions
+At n = 8 the holdout is better read as counts: faithfulness is 1.000 on 6 of 8
+questions for each judge, and all evidence groups are covered on 7 of 8. The
+holdout faithfulness gap rests on two questions where the judges disagree,
+Q003 and Q016.
 
-Generation failed on 4 of 30 questions, so no metric below covers all 30.
+Citation validation rejects cross-product comparisons disproportionately: 3 of
+6 such questions produced no verifiable answer, against 1 of the other 24,
+because a comparison must clear the verbatim-citation bar once per product.
+The four excluded questions are therefore not a random sample of the set.
 
-| Split | Questions | Answered | Generation failures |
-|---|---:|---:|---|
-| Dev | 20 | 18 | Q032, Q036 |
-| Holdout | 10 | 8 | Q012, Q031 |
-
-All four failures are `CitationValidationError`: the model produced an answer
-whose quoted `supporting_text` could not be verified against its declared
-chunk at the 82% fuzzy threshold, or produced no verified citation from one
-compared product's own chunks. **Three of the four are Cross-Product
-Comparison questions** — 3 of the 6 questions of that type failed, against 1
-of the remaining 24 questions. A comparison answer must clear the verbatim
-citation bar once per product, so it carries twice the exposure. Retrieval is
-not the cause: re-running retrieval for the four shows both compared products
-present in the final contexts, and full evidence coverage for Q032 and Q036.
-This exclusion is not random with respect to question type and every figure
-below is conditioned on it.
-
-### Dev split (18 answered of 20)
-
-| Metric | Self-judge | Independent judge | Self − independent | Paired n |
-|---|---:|---:|---:|---:|
-| Faithfulness | 0.964 | 0.954 | +0.011 | 18 |
-| Answer Correctness | 0.710 | 0.722 | −0.012 | 18 |
-| Context Recall@4 | 0.972 (deterministic, no judge) | — | — | 18 |
-
-### Holdout split (8 answered of 10)
-
-The holdout is small. These are counts, not rates, and one question moves a
-mean by more than 0.12.
-
-| Metric | Result |
-|---|---|
-| Faithfulness = 1.000 | self **6 of 8**, independent **6 of 8** |
-| Faithfulness mean | self 0.912, independent 0.804, paired n = 8 |
-| Answer Correctness mean | self 0.758, independent 0.701, paired n = 8 |
-| Context Recall@4 | all evidence groups covered on **7 of 8**; 0.875 mean |
-
-The −0.109 faithfulness gap on the holdout comes from one question, Q003,
-where the independent judge scored 0.000 and the self-judge 1.000; Q016 runs
-the other way. With n = 8 this is a disagreement on two questions, not a
-measured trend.
-
-### Judge reliability
-
-Both judges returned a score for **every** answered question on **both**
-metrics: 104 of 104 scores, 0 provider errors, 0 parse errors, 0 metric
-errors. No paired delta above drops any question, so paired n equals the
-answered count in every row.
-
-Reaching that took one fix. Under `response_format: json_object` Bedrock
-Mantle prefills the start of the JSON object and `gpt-oss-120b` then emits a
-complete object of its own, so the reply carries two openings and will not
-parse. The defect is deterministic at temperature 0, so retrying cannot clear
-it; the evaluator repairs the reply before parsing instead. See
-`evaluation/README.md`.
-
-These results measure this pipeline on this brochure set and should not be
-treated as a universal benchmark.
+These figures describe this pipeline on this brochure set, not a general
+benchmark.
 
 ## Supported brochure set
 
@@ -261,6 +222,7 @@ Benefit-Explorer/
 │   │   ├── retrieval/                # Embeddings, BM25, Chroma, RRF
 │   │   ├── generation/               # Reranking, generation, citations
 │   │   └── main.py                   # FastAPI application
+│   ├── tests/                        # Retrieval, reranking, and citation tests
 │   ├── .env.example
 │   ├── configure_mantle.sh
 │   └── requirements.txt
@@ -271,14 +233,18 @@ Benefit-Explorer/
 │   ├── .env.example
 │   └── package.json
 ├── evaluation/
-│   ├── golden/                       # 30-question golden dataset
-│   ├── src/                          # Three-metric evaluation pipeline
+│   ├── golden/                       # 30-question dataset, evidence groups, splits
+│   ├── src/                          # Three-metric dual-judge pipeline
+│   ├── tests/                        # Split, checkpoint, and reporting tests
 │   ├── results/                      # Generated JSON and CSV results
 │   ├── reports/                      # Generated Markdown summaries
 │   └── run_evaluation.py
 ├── docs/
-│   └── screenshots/                  # Portfolio screenshots or demo GIF
+│   └── screenshots/                  # Portfolio screenshots
+├── .github/workflows/                # CI and CodeQL
+├── pyproject.toml                    # pytest configuration
 ├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
@@ -368,17 +334,25 @@ Install the optional evaluation dependencies from the repository root:
 backend/.venv/bin/pip install -r evaluation/requirements.txt
 ```
 
-Run all golden questions:
+Run all golden questions, generating answers and then scoring them:
 
 ```bash
 backend/.venv/bin/python evaluation/run_evaluation.py
 ```
 
-Run a smoke test or resume an interrupted run:
+The stages also run separately, so one answer set can be judged again without
+being regenerated:
 
 ```bash
-backend/.venv/bin/python evaluation/run_evaluation.py --limit 3
-backend/.venv/bin/python evaluation/run_evaluation.py --resume
+backend/.venv/bin/python evaluation/run_evaluation.py generate
+backend/.venv/bin/python evaluation/run_evaluation.py score
+backend/.venv/bin/python evaluation/run_evaluation.py report
+```
+
+Resume an interrupted run:
+
+```bash
+backend/.venv/bin/python evaluation/run_evaluation.py score --resume
 ```
 
 Progress is checkpointed atomically after every completed question. Do not run
