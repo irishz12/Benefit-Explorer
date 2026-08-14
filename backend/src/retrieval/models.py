@@ -34,7 +34,7 @@ class ChunkRecord:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "ChunkRecord":
-        """Validate and construct a record from Phase 1 JSON."""
+        """Validate and construct a record from processed-chunk JSON."""
 
         chunk_id = str(payload.get("chunk_id", "")).strip()
         text = str(payload.get("text", "")).strip()

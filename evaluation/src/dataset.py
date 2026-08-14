@@ -26,7 +26,6 @@ class GoldenQuestion:
     reference_answer: str
     relevant_chunk_ids: tuple[str, ...]
     relevant_evidence_groups: tuple[EvidenceGroup, ...] = ()
-    supporting_phrases: tuple[str, ...] = ()
     product: str | None = None
     category: str | None = None
 
@@ -48,9 +47,6 @@ class GoldenQuestion:
             question=required_text("question"),
             reference_answer=required_text("reference_answer"),
             relevant_chunk_ids=tuple(dict.fromkeys(relevant)),
-            supporting_phrases=tuple(
-                _string_list(payload.get("supporting_phrases", []), "supporting_phrases")
-            ),
             product=product.strip() if isinstance(product, str) and product.strip() else None,
             category=(
                 category.strip()
@@ -67,13 +63,6 @@ class EvaluationSplits:
     dev_question_ids: tuple[str, ...]
     holdout_question_ids: tuple[str, ...]
 
-    def name_for(self, question_id: str) -> str:
-        if question_id in self.dev_question_ids:
-            return "dev"
-        if question_id in self.holdout_question_ids:
-            return "holdout"
-        raise KeyError(f"Question {question_id!r} is absent from the frozen splits")
-
 
 def _string_list(value: object, field: str) -> list[str]:
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
@@ -81,11 +70,9 @@ def _string_list(value: object, field: str) -> list[str]:
     return [item.strip() for item in value if item.strip()]
 
 
-def load_golden_dataset(path: Path, limit: int | None = None) -> list[GoldenQuestion]:
+def load_golden_dataset(path: Path) -> list[GoldenQuestion]:
     """Load golden questions and their evidence-group relevance labels."""
 
-    if limit is not None and limit < 1:
-        raise ValueError("limit must be positive")
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as error:
@@ -98,8 +85,7 @@ def load_golden_dataset(path: Path, limit: int | None = None) -> list[GoldenQues
     if duplicates:
         raise ValueError(f"Duplicate question IDs: {duplicates}")
     groups_path = path.with_name("evidence_groups.json")
-    questions = _attach_evidence_groups(questions, groups_path)
-    return questions[:limit]
+    return _attach_evidence_groups(questions, groups_path)
 
 
 def load_evaluation_splits(
@@ -183,7 +169,6 @@ def _attach_evidence_groups(
                 reference_answer=question.reference_answer,
                 relevant_chunk_ids=question.relevant_chunk_ids,
                 relevant_evidence_groups=tuple(groups),
-                supporting_phrases=question.supporting_phrases,
                 product=question.product,
                 category=question.category,
             )

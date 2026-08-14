@@ -19,7 +19,7 @@ BACKEND_DIR = PROJECT_ROOT / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from src.main import DEFAULT_AWS_REGION, DEFAULT_MANTLE_MODEL, build_pipeline, get_rag_components
+from src.main import DEFAULT_AWS_REGION, build_pipeline, get_rag_components
 
 from .artifacts import (
     ARTIFACT_SCHEMA_VERSION,

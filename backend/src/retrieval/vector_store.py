@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def load_chunk_file(path: Path) -> list[ChunkRecord]:
-    """Load and validate the Phase 1 chunk array."""
+    """Load and validate the processed-chunk array written by ingestion."""
 
     with path.open("r", encoding="utf-8") as input_file:
         payload = json.load(input_file)
