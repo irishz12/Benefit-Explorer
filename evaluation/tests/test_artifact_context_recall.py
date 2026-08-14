@@ -29,7 +29,7 @@ def test_failed_generation_has_no_measurement_rather_than_zero() -> None:
 
 
 def test_missing_measurements_are_counted_not_averaged() -> None:
-    rows = [
+    rows: list[dict] = [
         {"question_id": "Q001", "split": "dev", "generation_error": None, "judges": {},
          "context_recall_at_4": 1.0},
         {"question_id": "Q002", "split": "dev", "generation_error": None, "judges": {},

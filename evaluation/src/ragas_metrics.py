@@ -151,7 +151,7 @@ def _install_json_repair(client: OpenAI) -> None:
                 choice.message.content = repair_json_object(content)
         return completion
 
-    completions.create = create
+    completions.create = create  # type: ignore[method-assign]
 
 
 class RagasEvaluator:

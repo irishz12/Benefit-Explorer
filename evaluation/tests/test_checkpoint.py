@@ -96,4 +96,4 @@ def test_independent_judge_cannot_share_the_generation_family() -> None:
 
 
 def test_cross_family_independent_judge_is_accepted() -> None:
-    assert_independent_judge("qwen.qwen3-32b", "openai.gpt-oss-120b") is None
+    assert_independent_judge("qwen.qwen3-32b", "openai.gpt-oss-120b")
