@@ -86,6 +86,23 @@ def _paired_delta(
     }
 
 
+def _context_recall_aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Context Recall@4 is deterministic, so no judge can fail it — only a
+    missing retrieval artifact can, and that is counted rather than averaged."""
+
+    values = [
+        float(row["context_recall_at_4"])
+        for row in rows
+        if row.get("context_recall_at_4") is not None
+    ]
+    return {
+        "mean": fmean(values) if values else None,
+        "effective_n": len(values),
+        "eligible_n": len(rows),
+        "fully_covered_n": sum(value == 1.0 for value in values),
+    }
+
+
 def aggregate_dual_judges(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
     all_rows = list(rows)
     aggregates: dict[str, Any] = {}
@@ -108,6 +125,7 @@ def aggregate_dual_judges(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
             "paired_deltas": {
                 metric: _paired_delta(successful, metric) for metric in JUDGE_METRICS
             },
+            "context_recall_at_4": _context_recall_aggregate(successful),
         }
     return aggregates
 
@@ -124,6 +142,7 @@ def write_csv(rows: list[dict[str, Any]], path: Path) -> None:
         "independent_faithfulness",
         "self_answer_correctness",
         "independent_answer_correctness",
+        "context_recall_at_4",
         "generation_error",
     ]
     with path.open("w", encoding="utf-8", newline="") as output:
@@ -141,6 +160,7 @@ def write_csv(rows: list[dict[str, Any]], path: Path) -> None:
                     "independent_faithfulness": _metric_outcome(row, "independent", "faithfulness").get("value"),
                     "self_answer_correctness": _metric_outcome(row, "self", "answer_correctness").get("value"),
                     "independent_answer_correctness": _metric_outcome(row, "independent", "answer_correctness").get("value"),
+                    "context_recall_at_4": row.get("context_recall_at_4"),
                     "generation_error": row.get("generation_error"),
                 }
             )
@@ -190,6 +210,15 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
                 f"{_score_cell(aggregate['judges']['independent'][metric])} | "
                 f"{delta_text} ({delta['paired_n']}/{delta['eligible_n']}) |"
             )
+        recall = aggregate["context_recall_at_4"]
+        lines.append(
+            f"| context_recall_at_4 (deterministic) | {_score_cell(recall)} | — | — |"
+        )
+        lines.append("")
+        lines.append(
+            f"- Evidence groups fully covered on {recall['fully_covered_n']} of "
+            f"{recall['effective_n']} answered questions."
+        )
         lines.append("")
         for metric in JUDGE_METRICS:
             for entry in aggregate["paired_deltas"][metric]["dropped"]:
@@ -218,3 +247,4 @@ def print_summary(report: dict[str, Any]) -> None:
                 f"independent={_score_cell(independent)}  "
                 f"delta={delta_text} (paired {delta['paired_n']}/{delta['eligible_n']})"
             )
+        print(f"{'context_recall_at_4':20} {_score_cell(aggregate['context_recall_at_4'])}")

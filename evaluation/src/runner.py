@@ -27,7 +27,9 @@ from .artifacts import (
     load_generation_checkpoint,
     question_fingerprint,
 )
+from .context_recall import context_recall_at_4
 from .dataset import (
+    EvidenceGroup,
     GoldenQuestion,
     load_evaluation_splits,
     load_golden_dataset,
@@ -237,6 +239,29 @@ def _load_artifacts(path: Path) -> dict[str, Any]:
     return payload
 
 
+def artifact_context_recall(artifact: dict[str, Any]) -> float | None:
+    """Evidence-group Context Recall@4 for one stored generation artifact.
+
+    Returns None when generation failed, because the error path stores no
+    selected contexts and a missing measurement must not be read as 0.0.
+    """
+
+    if artifact.get("generation_error") is not None:
+        return None
+    groups = [
+        EvidenceGroup(
+            str(group.get("evidence_id", "")),
+            str(group.get("description", "")),
+            tuple(group.get("chunk_ids", ())),
+        )
+        for group in artifact.get("relevant_evidence_groups", [])
+    ]
+    if not groups:
+        return None
+    selected = [context["chunk_id"] for context in artifact.get("selected_contexts", [])]
+    return context_recall_at_4(selected, groups)
+
+
 def _model_family(model_id: str) -> str:
     """Return the vendor prefix of a model id (`qwen.qwen3-32b` -> `qwen`)."""
 
@@ -401,6 +426,7 @@ async def score_artifacts(args: argparse.Namespace) -> dict[str, Any]:
             "generated_answer": artifact.get("generated_answer"),
             "selected_contexts": artifact.get("selected_contexts", []),
             "generation_error": artifact.get("generation_error"),
+            "context_recall_at_4": artifact_context_recall(artifact),
             "generation_model_id": generation_model_id,
             "judge_model_ids": judge_model_ids,
             "config_hash": configuration["config_hash"],
