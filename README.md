@@ -33,10 +33,11 @@ and stable chunk identifier rendered by the frontend.
 
 ### 3. Multi-product comparison
 
-This larger query demonstrates product-balanced retrieval and separate cited
-evidence for Kotak EDGE and Kotak TULIP.
+This response was generated through the live FastAPI RAG pipeline. It
+demonstrates product-balanced retrieval and separate cited evidence for Kotak
+Gen2Gen Protect and Kotak Fortune Maximiser.
 
-![BenefitExplorer EDGE and TULIP maturity comparison with two verified sources](docs/screenshots/benefitexplorer-comparison-answer.jpg)
+![BenefitExplorer Gen2Gen Protect and Fortune Maximiser cover comparison with two verified sources](docs/screenshots/benefitexplorer-comparison-answer.jpg)
 
 ## Problem statement
 
@@ -91,8 +92,9 @@ validated and rendered with product and page metadata.
 
 ## Example questions and grounded answers
 
-These examples are adapted from the manually labeled golden dataset. Citation
-numbers represent the source cards returned by the application.
+Citation numbers represent the source cards returned by the application.
+Examples 1 and 2 are adapted from the manually labeled golden dataset; example
+3 is unedited output from a live pipeline run.
 
 ### 1. Income timing
 
@@ -118,17 +120,23 @@ applicable discontinued-policy proceeds are paid only after the lock-in ends
 **Sources:** [1] Kotak TULIP, page 27 — `chunk_b6101535d5e4025a10adbe58`;
 [2] Kotak TULIP, page 30 — `chunk_a387fa0f7b1edb274e7ba324`.
 
-### 3. Cross-product maturity comparison
+### 3. Cross-product cover comparison
 
-**Question:** How do the maturity benefits of Kotak EDGE and Kotak TULIP differ?
+**Question:** How does Gen2Gen Protect's Legacy ROP family cover differ from
+Fortune Maximiser's Spouse Cover?
 
-**Answer:** Kotak EDGE pays the Sum Assured on Maturity plus any accumulated
-Guaranteed Income under the accrual option [1]. Kotak TULIP instead pays the
-Main Account and Top-Up Account Fund Value, including Loyalty Additions when
-the policy is in force and all premiums are current [2].
+**Answer:** The Legacy ROP family cover in Kotak Gen2Gen Protect provides life
+cover to the parent and then to the identified child up to a specified age,
+provided the parent survives till the end of the policy term [3]. In contrast,
+the Spouse Cover in Kotak Fortune Maximiser allows the policyholder to cover
+the spouse of the Life Insured, with the flexibility to choose the Sum
+Assured on death for the Spouse between 50% to 100% of the Basic Sum Assured
+applicable for the Primary Life Insured [1]. Additionally, the Spouse Cover
+in Fortune Maximiser continues with life cover for the spouse until the end
+of the policy term or attainment of age 85 years, whichever is earlier [1].
 
-**Sources:** [1] Kotak EDGE, page 6 — `chunk_592b0cfbc041bce3cad226c3`;
-[2] Kotak TULIP, page 13 — `chunk_09716cf6631348d73260b980`.
+**Sources:** [1] Kotak Fortune Maximiser, page 7 — `chunk_134463b9ff1805fc697ea28e`;
+[3] Kotak Gen2Gen Protect, page 1 — `chunk_704fed6e150aa2a6c708737f`.
 
 ## Tech stack
 
