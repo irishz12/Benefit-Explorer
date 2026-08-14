@@ -16,6 +16,8 @@ from ragas.llms import llm_factory
 from ragas.metrics import answer_correctness, faithfulness
 from ragas.run_config import RunConfig
 
+DEFAULT_MAX_OUTPUT_TOKENS = 16384
+
 
 @dataclass(frozen=True, slots=True)
 class MetricOutcome:
@@ -61,23 +63,48 @@ class BGERagasEmbeddings(BaseRagasEmbeddings):
         return await asyncio.to_thread(self.embed_documents, texts)
 
 
+PROVIDER_ERROR_TYPES = frozenset(
+    {
+        "APIConnectionError",
+        "APITimeoutError",
+        "InternalServerError",
+        "RateLimitError",
+        "ServiceUnavailableError",
+        # RAGAS wraps its own per-metric deadline in a bare asyncio TimeoutError.
+        "TimeoutError",
+    }
+)
+# Structured-output failures: the judge replied, but not in the shape RAGAS needs.
+PARSE_ERROR_TYPES = frozenset(
+    {
+        "IncompleteOutputException",
+        "InstructorRetryException",
+        "JSONDecodeError",
+        "ResponseParsingError",
+        "ValidationError",
+    }
+)
+
+
+def _matches(error: Exception, type_names: frozenset[str]) -> bool:
+    if error.__class__.__name__ in type_names:
+        return True
+    nested = error.__cause__ or error.__context__
+    return isinstance(nested, Exception) and nested is not error and _matches(nested, type_names)
+
+
 def _provider_error(error: Exception) -> bool:
     status_code = getattr(error, "status_code", None)
     message = str(error).casefold()
-    direct = status_code == 429 or (isinstance(status_code, int) and status_code >= 500) or (
-        error.__class__.__name__
-        in {
-            "APIConnectionError",
-            "APITimeoutError",
-            "InternalServerError",
-            "RateLimitError",
-            "ServiceUnavailableError",
-        }
-    )
-    if direct or "rate limit" in message or "status code: 429" in message:
+    if status_code == 429 or (isinstance(status_code, int) and status_code >= 500):
         return True
-    nested = error.__cause__ or error.__context__
-    return isinstance(nested, Exception) and nested is not error and _provider_error(nested)
+    if "rate limit" in message or "status code: 429" in message:
+        return True
+    return _matches(error, PROVIDER_ERROR_TYPES)
+
+
+def _parse_error(error: Exception) -> bool:
+    return _matches(error, PARSE_ERROR_TYPES)
 
 
 class RagasEvaluator:
@@ -92,14 +119,22 @@ class RagasEvaluator:
         timeout: float = 180.0,
         max_attempts: int = 4,
         backoff_seconds: float = 2.0,
+        max_output_tokens: int | None = None,
+        repair_attempts: int = 3,
     ) -> None:
         if max_attempts < 1:
             raise ValueError("max_attempts must be positive")
         if backoff_seconds < 0:
             raise ValueError("backoff_seconds cannot be negative")
+        if repair_attempts < 1:
+            raise ValueError("repair_attempts must be positive")
         self.model_id = model
         self.max_attempts = max_attempts
         self.backoff_seconds = backoff_seconds
+        self.max_output_tokens = max_output_tokens or int(
+            os.getenv("RAGAS_MAX_OUTPUT_TOKENS", str(DEFAULT_MAX_OUTPUT_TOKENS))
+        )
+        self.repair_attempts = repair_attempts
         # RAGAS retries are disabled here so one explicit retry policy controls
         # provider pressure and makes the number of attempts auditable.
         run_config = RunConfig(timeout=timeout, max_retries=0)
@@ -110,7 +145,10 @@ class RagasEvaluator:
             client=client,
             adapter="instructor",
             temperature=0.0,
-            max_tokens=int(os.getenv("RAGAS_MAX_OUTPUT_TOKENS", "1800")),
+            max_tokens=self.max_output_tokens,
+            # Instructor re-asks the judge with the validation error attached, so a
+            # malformed structured reply is repaired in place before it is recorded.
+            max_retries=repair_attempts,
         )
         ragas_embeddings = BGERagasEmbeddings(embedder, run_config)
 
@@ -134,11 +172,18 @@ class RagasEvaluator:
                     raise ValueError(f"RAGAS returned a non-finite score: {value}")
                 return MetricOutcome(value, "ok", attempts=attempt)
             except Exception as error:
-                provider_error = _provider_error(error)
-                if provider_error and attempt < self.max_attempts:
-                    await asyncio.sleep(self.backoff_seconds * (2 ** (attempt - 1)))
+                if _provider_error(error):
+                    status = "provider_error"
+                elif _parse_error(error):
+                    status = "parse_error"
+                else:
+                    status = "metric_error"
+                if status != "metric_error" and attempt < self.max_attempts:
+                    # Parse failures survived instructor's in-call repair, so resample
+                    # immediately; only provider pressure needs exponential backoff.
+                    if status == "provider_error":
+                        await asyncio.sleep(self.backoff_seconds * (2 ** (attempt - 1)))
                     continue
-                status = "provider_error" if provider_error else "metric_error"
                 return MetricOutcome(
                     None,
                     status,

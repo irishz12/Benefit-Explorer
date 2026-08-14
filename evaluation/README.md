@@ -9,9 +9,19 @@ application. It generates fresh RAG answers and reports exactly three metrics:
    group, so duplicate ingestion windows do not make perfect recall impossible.
 3. Answer Correctness — official `ragas.metrics.answer_correctness`
 
-The RAGAS judge uses the Bedrock Mantle endpoint and credentials configured in
-`backend/.env`. Set `RAGAS_JUDGE_MODEL` there to use a judge model different
-from the answer-generation model.
+Every answer is scored twice. The self-judge is the generation model itself
+(`qwen.qwen3-32b`) and the independent judge is `openai.gpt-oss-120b`. Both run
+on the same Bedrock Mantle endpoint and credentials configured in
+`backend/.env`, so no second provider key is needed. Override the independent
+judge with `INDEPENDENT_JUDGE_MODEL` or `--independent-judge-model`; the runner
+refuses any judge that is the same id as, or from the same model family as, the
+generator.
+
+Judges are given a 16K output-token ceiling because the RAGAS prompts return
+structured output. A malformed structured reply is re-asked in place by
+instructor (`--judge-repair-attempts`, default 3) and then resampled by the
+outer retry loop; a reply that still fails to parse is recorded as
+`parse_error` rather than being silently averaged away.
 
 ## Install
 

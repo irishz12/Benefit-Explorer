@@ -42,9 +42,13 @@ DEFAULT_ARTIFACTS = EVALUATION_DIR / "results" / "generation_artifacts.json"
 DEFAULT_RESULTS = EVALUATION_DIR / "results" / "evaluation_results.json"
 DEFAULT_CSV = EVALUATION_DIR / "results" / "per_question_metrics.csv"
 DEFAULT_REPORT = EVALUATION_DIR / "reports" / "evaluation_summary.md"
-DEFAULT_NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-DEFAULT_INDEPENDENT_JUDGE = "meta/llama-3.1-70b-instruct"
-RESULT_SCHEMA_VERSION = 3
+# The independent judge must come from a different model family than the
+# generator, so a Qwen model is never a valid choice here.
+DEFAULT_INDEPENDENT_JUDGE = "openai.gpt-oss-120b"
+DEFAULT_JUDGE_MAX_OUTPUT_TOKENS = 16384
+RESULT_SCHEMA_VERSION = 4
+# Statuses that a `--resume --retry-provider-errors` pass is allowed to re-score.
+RETRYABLE_STATUSES = frozenset({"provider_error", "parse_error"})
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -71,10 +75,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Continue to later questions after exhausted provider retries.",
     )
     parser.add_argument("--independent-judge-model", default=None)
-    parser.add_argument("--independent-base-url", default=None)
     parser.add_argument("--ragas-timeout", type=float, default=180.0)
     parser.add_argument("--judge-max-attempts", type=int, default=4)
     parser.add_argument("--judge-backoff-seconds", type=float, default=3.0)
+    parser.add_argument("--judge-max-output-tokens", type=int, default=None)
+    parser.add_argument(
+        "--judge-repair-attempts",
+        type=int,
+        default=3,
+        help="In-call structured-output repair attempts before a parse failure is recorded.",
+    )
     return parser
 
 
@@ -227,11 +237,27 @@ def _load_artifacts(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _model_family(model_id: str) -> str:
+    """Return the vendor prefix of a model id (`qwen.qwen3-32b` -> `qwen`)."""
+
+    normalised = model_id.strip().casefold()
+    for separator in (".", "/"):
+        if separator in normalised:
+            return normalised.split(separator, 1)[0]
+    return normalised
+
+
 def assert_independent_judge(generation_model_id: str, judge_model_id: str) -> None:
     if generation_model_id.strip().casefold() == judge_model_id.strip().casefold():
         raise ValueError(
             "Independent judge model must differ from the generation model: "
             f"both resolve to {generation_model_id!r}."
+        )
+    if _model_family(generation_model_id) == _model_family(judge_model_id):
+        raise ValueError(
+            "Independent judge model must come from a different model family than the "
+            f"generator: {generation_model_id!r} and {judge_model_id!r} share the "
+            f"{_model_family(generation_model_id)!r} family."
         )
 
 
@@ -272,7 +298,7 @@ def _judge_needs_score(
     statuses = {outcome.get("status") for outcome in outcomes if isinstance(outcome, dict)}
     if not statuses:
         return True
-    return retry_provider_errors and "provider_error" in statuses
+    return retry_provider_errors and bool(statuses & RETRYABLE_STATUSES)
 
 
 def _has_provider_error(row: dict[str, Any], judge_key: str) -> bool:
@@ -307,61 +333,56 @@ async def score_artifacts(args: argparse.Namespace) -> dict[str, Any]:
     self_model_id = generation_model_id
     independent_model_id = (
         args.independent_judge_model
-        or os.getenv("NVIDIA_JUDGE_MODEL")
+        or os.getenv("INDEPENDENT_JUDGE_MODEL")
         or DEFAULT_INDEPENDENT_JUDGE
     )
     assert_independent_judge(generation_model_id, independent_model_id)
     judge_model_ids = {"self": self_model_id, "independent": independent_model_id}
 
     aws_key = os.getenv("AWS_BEARER_TOKEN_BEDROCK")
-    nvidia_key = os.getenv("NVIDIA_API_KEY")
     if not aws_key:
-        raise RuntimeError("AWS_BEARER_TOKEN_BEDROCK is required for the self-judge")
-    if not nvidia_key:
-        raise RuntimeError("NVIDIA_API_KEY is required for the independent NIM judge")
+        raise RuntimeError("AWS_BEARER_TOKEN_BEDROCK is required for both judges")
     region = os.getenv("AWS_REGION", DEFAULT_AWS_REGION)
-    self_base_url = os.getenv(
+    judge_base_url = os.getenv(
         "OPENAI_BASE_URL",
         f"https://bedrock-mantle.{region}.api.aws/v1",
     )
-    independent_base_url = (
-        args.independent_base_url
-        or os.getenv("NVIDIA_BASE_URL")
-        or DEFAULT_NVIDIA_BASE_URL
+    max_output_tokens = args.judge_max_output_tokens or int(
+        os.getenv("RAGAS_MAX_OUTPUT_TOKENS", str(DEFAULT_JUDGE_MAX_OUTPUT_TOKENS))
     )
 
     retriever, _ = get_rag_components()
     from .ragas_metrics import RagasEvaluator
 
+    # Both judges run on Bedrock Mantle with the same credentials as generation;
+    # only the model id differs.
     evaluators = {
-        "self": RagasEvaluator(
+        judge_key: RagasEvaluator(
             retriever.vector_store.embedder,
-            self_model_id,
+            judge_model_ids[judge_key],
             aws_key,
-            self_base_url,
+            judge_base_url,
             args.ragas_timeout,
             args.judge_max_attempts,
             args.judge_backoff_seconds,
-        ),
-        "independent": RagasEvaluator(
-            retriever.vector_store.embedder,
-            independent_model_id,
-            nvidia_key,
-            independent_base_url,
-            args.ragas_timeout,
-            args.judge_max_attempts,
-            args.judge_backoff_seconds,
-        ),
+            max_output_tokens,
+            args.judge_repair_attempts,
+        )
+        for judge_key in ("self", "independent")
     }
     configuration = {
         "artifact_path": str(args.artifacts.resolve()),
         "config_hash": artifact_configuration["config_hash"],
         "generation_model_id": generation_model_id,
         "judge_model_ids": judge_model_ids,
+        "judge_provider": "aws-bedrock-mantle",
+        "judge_base_url": judge_base_url,
         "judge_framework": "ragas",
         "judge_concurrency": 1,
         "judge_max_attempts": args.judge_max_attempts,
         "judge_backoff_seconds": args.judge_backoff_seconds,
+        "judge_max_output_tokens": max_output_tokens,
+        "judge_repair_attempts": args.judge_repair_attempts,
     }
     checkpoint = (
         _load_score_checkpoint(args.results, configuration["config_hash"], judge_model_ids)
@@ -447,6 +468,10 @@ async def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("--judge-max-attempts must be positive")
     if args.judge_backoff_seconds < 0:
         raise ValueError("--judge-backoff-seconds cannot be negative")
+    if args.judge_max_output_tokens is not None and args.judge_max_output_tokens < 1:
+        raise ValueError("--judge-max-output-tokens must be positive")
+    if args.judge_repair_attempts < 1:
+        raise ValueError("--judge-repair-attempts must be positive")
     if args.stage == "generate":
         return await generate_artifacts(args)
     if args.stage == "score":

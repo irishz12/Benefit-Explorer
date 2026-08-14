@@ -88,3 +88,12 @@ def test_configuration_mismatch_fails_loudly(tmp_path: Path) -> None:
 def test_independent_judge_cannot_equal_generation_model() -> None:
     with pytest.raises(ValueError, match="must differ"):
         assert_independent_judge("qwen.qwen3-32b", "QWEN.QWEN3-32B")
+
+
+def test_independent_judge_cannot_share_the_generation_family() -> None:
+    with pytest.raises(ValueError, match="different model family"):
+        assert_independent_judge("qwen.qwen3-32b", "qwen.qwen3-235b-a22b-2507")
+
+
+def test_cross_family_independent_judge_is_accepted() -> None:
+    assert_independent_judge("qwen.qwen3-32b", "openai.gpt-oss-120b") is None

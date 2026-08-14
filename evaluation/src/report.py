@@ -45,7 +45,14 @@ def _judge_aggregate(
         "effective_n": len(values),
         "eligible_n": len(rows),
         "provider_errors": sum(outcome.get("status") == "provider_error" for outcome in outcomes),
+        "parse_errors": sum(outcome.get("status") == "parse_error" for outcome in outcomes),
         "metric_errors": sum(outcome.get("status") == "metric_error" for outcome in outcomes),
+        "unscored": sum(not outcome for outcome in outcomes),
+        "failed_question_ids": [
+            row["question_id"]
+            for row, outcome in zip(rows, outcomes)
+            if outcome.get("status") != "ok"
+        ],
     }
 
 
@@ -54,17 +61,28 @@ def _paired_delta(
     metric: str,
 ) -> dict[str, Any]:
     paired: list[tuple[float, float]] = []
+    dropped: list[dict[str, str]] = []
     for row in rows:
         self_outcome = _metric_outcome(row, "self", metric)
         independent_outcome = _metric_outcome(row, "independent", metric)
         if self_outcome.get("status") == independent_outcome.get("status") == "ok":
             paired.append((float(self_outcome["value"]), float(independent_outcome["value"])))
+            continue
+        dropped.append(
+            {
+                "question_id": row["question_id"],
+                "self": self_outcome.get("status") or "unscored",
+                "independent": independent_outcome.get("status") or "unscored",
+            }
+        )
     return {
         "self_mean": fmean(pair[0] for pair in paired) if paired else None,
         "independent_mean": fmean(pair[1] for pair in paired) if paired else None,
         "self_minus_independent": fmean(pair[0] - pair[1] for pair in paired) if paired else None,
         "paired_n": len(paired),
         "eligible_n": len(rows),
+        "dropped_n": len(dropped),
+        "dropped": dropped,
     }
 
 
@@ -77,6 +95,9 @@ def aggregate_dual_judges(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
         aggregates[split] = {
             "question_count": len(split_rows),
             "generation_success_n": len(successful),
+            "generation_failure_ids": [
+                row["question_id"] for row in split_rows if row.get("generation_error") is not None
+            ],
             "judges": {
                 judge: {
                     metric: _judge_aggregate(successful, judge, metric)
@@ -139,15 +160,22 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
         f"- Generation model: `{configuration['generation_model_id']}`",
         f"- Self-judge: `{configuration['judge_model_ids']['self']}`",
         f"- Independent judge: `{configuration['judge_model_ids']['independent']}`",
+        f"- Judge provider: `{configuration.get('judge_provider', 'unknown')}`, "
+        f"max output tokens {configuration.get('judge_max_output_tokens', 'unknown')}, "
+        f"repair attempts {configuration.get('judge_repair_attempts', 'unknown')}",
         f"- Config hash: `{configuration['config_hash']}`",
         "- Values in parentheses are `effective n / eligible n`.",
         "",
     ]
     for split in ("dev", "holdout"):
         aggregate = report["aggregate_metrics"][split]
+        failures = aggregate["generation_failure_ids"]
         lines.extend(
             [
                 f"## {split.title()} (n={aggregate['question_count']})",
+                "",
+                f"- Answered: {aggregate['generation_success_n']}/{aggregate['question_count']}"
+                + (f"; generation failed: {', '.join(failures)}" if failures else ""),
                 "",
                 "| Metric | Self-judge | Independent judge | Self − independent (paired n) |",
                 "|---|---:|---:|---:|",
@@ -163,6 +191,14 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
                 f"{delta_text} ({delta['paired_n']}/{delta['eligible_n']}) |"
             )
         lines.append("")
+        for metric in JUDGE_METRICS:
+            for entry in aggregate["paired_deltas"][metric]["dropped"]:
+                lines.append(
+                    f"- Dropped from `{metric}` pairing: {entry['question_id']} "
+                    f"(self={entry['self']}, independent={entry['independent']})"
+                )
+        if any(aggregate["paired_deltas"][metric]["dropped"] for metric in JUDGE_METRICS):
+            lines.append("")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

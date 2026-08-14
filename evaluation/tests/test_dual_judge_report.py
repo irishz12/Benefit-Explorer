@@ -49,3 +49,27 @@ def test_provider_errors_are_excluded_and_counted() -> None:
     assert metric["effective_n"] == 0
     assert metric["eligible_n"] == 1
     assert metric["provider_errors"] == 1
+    assert metric["failed_question_ids"] == ["Q001"]
+
+
+def test_unpaired_questions_are_dropped_with_a_stated_reason() -> None:
+    rows = [_row("Q001", "dev", 0.9, 0.7), _row("Q002", "dev", 0.8, 0.6)]
+    rows[1]["judges"]["independent"]["metrics"]["faithfulness"] = _outcome(None, "parse_error")
+    delta = aggregate_dual_judges(rows)["dev"]["paired_deltas"]["faithfulness"]
+    assert delta["paired_n"] == 1
+    assert delta["eligible_n"] == 2
+    assert delta["dropped_n"] == 1
+    assert delta["dropped"] == [
+        {"question_id": "Q002", "self": "ok", "independent": "parse_error"}
+    ]
+
+
+def test_generation_failures_are_named_per_split() -> None:
+    rows = [_row("Q001", "dev", 0.9, 0.7), _row("Q002", "dev", 0.8, 0.6)]
+    rows[1]["generation_error"] = "CitationValidationError: boom"
+    rows[1]["judges"] = {}
+    aggregate = aggregate_dual_judges(rows)["dev"]
+    assert aggregate["question_count"] == 2
+    assert aggregate["generation_success_n"] == 1
+    assert aggregate["generation_failure_ids"] == ["Q002"]
+    assert aggregate["judges"]["self"]["faithfulness"]["eligible_n"] == 1

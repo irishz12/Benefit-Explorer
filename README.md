@@ -364,7 +364,8 @@ usable evidence. See `evaluation/golden/LABELING.md` for the labeling policy.
 | `CHROMA_COLLECTION` | `insurance_products` | Chroma collection name |
 | `RAG_OFFLINE` | `true` | Require cached local retrieval models |
 | `FRONTEND_ORIGINS` | `http://localhost:3000` | Allowed browser origins |
-| `RAGAS_JUDGE_MODEL` | Generation model | Optional evaluation judge override |
+| `INDEPENDENT_JUDGE_MODEL` | `openai.gpt-oss-120b` | Independent evaluation judge; must be a different family from `MANTLE_MODEL` |
+| `RAGAS_MAX_OUTPUT_TOKENS` | `16384` | Judge output limit for structured RAGAS replies |
 
 ### Frontend
 
