@@ -10,7 +10,7 @@ numpy>=1.26,<3.0
 
 # Cross-encoder reranking and AWS Bedrock Mantle generation
 openai>=1.60,<3.0
-python-dotenv>=1.0,<2.0
+python-dotenv>=1.2.2,<2.0
 
 # HTTP API for the web client
 fastapi>=0.115,<1.0
