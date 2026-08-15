@@ -17,7 +17,7 @@ BACKEND_DIR = PROJECT_ROOT / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from src.main import DEFAULT_AWS_REGION, DEFAULT_MANTLE_MODEL, build_pipeline, get_rag_components
+from src.main import DEFAULT_AWS_REGION, build_pipeline, get_rag_components
 
 from .context_recall import context_recall_at_4
 from .dataset import GoldenQuestion, load_golden_dataset, validate_relevant_chunk_ids
@@ -28,6 +28,9 @@ DEFAULT_GOLDEN = EVALUATION_DIR / "golden" / "golden_questions.json"
 DEFAULT_RESULTS = EVALUATION_DIR / "results" / "evaluation_results.json"
 DEFAULT_CSV = EVALUATION_DIR / "results" / "per_question_metrics.csv"
 DEFAULT_REPORT = EVALUATION_DIR / "reports" / "evaluation_summary.md"
+# The RAGAS judge has its own default and must never silently fall back to the
+# production generation model configured for MANTLE_MODEL.
+DEFAULT_RAGAS_JUDGE_MODEL = "openai.gpt-oss-120b"
 
 
 def _format_metric(name: str, value: float | None) -> str:
@@ -156,8 +159,10 @@ async def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
         raise RuntimeError("AWS_BEARER_TOKEN_BEDROCK is required in backend/.env")
     region = os.getenv("AWS_REGION", DEFAULT_AWS_REGION)
     base_url = os.getenv("OPENAI_BASE_URL", f"https://bedrock-mantle.{region}.api.aws/v1")
-    judge_model = args.judge_model or os.getenv("RAGAS_JUDGE_MODEL") or os.getenv(
-        "MANTLE_MODEL", DEFAULT_MANTLE_MODEL
+    judge_model = (
+        args.judge_model
+        or os.getenv("RAGAS_JUDGE_MODEL")
+        or DEFAULT_RAGAS_JUDGE_MODEL
     )
 
     questions = load_golden_dataset(args.golden, args.limit)

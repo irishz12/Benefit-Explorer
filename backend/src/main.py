@@ -25,7 +25,7 @@ from src.retrieval.vector_store import ChromaVectorStore
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CHROMA = BACKEND_DIR / "data" / "chroma_db"
-DEFAULT_MANTLE_MODEL = "qwen.qwen3-32b"
+DEFAULT_MANTLE_MODEL = "qwen.qwen3-next-80b-a3b-instruct"
 DEFAULT_AWS_REGION = "us-east-1"
 # The backend's private environment file is authoritative. This prevents a
 # stale shell/session Bedrock token from silently shadowing the configured key.
