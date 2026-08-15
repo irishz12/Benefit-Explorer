@@ -77,6 +77,7 @@ def get_rag_components() -> tuple[HybridRetriever, BGEReranker]:
     reranker = BGEReranker(
         model_name=os.getenv("RERANKER_MODEL", DEFAULT_RERANKER_MODEL),
         offline=os.getenv("RAG_OFFLINE", "true").casefold() == "true",
+        batch_size=int(os.getenv("RERANKER_BATCH_SIZE", "8")),
         focus_embedder=embedder,
         product_match_boost=0.35,
         show_progress=False,
