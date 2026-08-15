@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
-from src.generation.citation_utils import CitationValidationError, parse_and_verify_answer
+from src.generation.citation_utils import (
+    CitationValidationError,
+    parse_and_verify_answer,
+    recover_answer_payload,
+)
 from src.retrieval.models import ChunkRecord, HybridResult
 
 
@@ -125,3 +131,46 @@ Fund Value is payable for a reduced paid-up policy."""
     assert answer.citations[0].supporting_text == full_sentence
     assert answer.citations[0].supporting_text.startswith("On survival")
     assert answer.citations[0].supporting_text.endswith("shall be payable.")
+
+
+def test_rejects_citation_object_without_inline_marker() -> None:
+    """A declared citation object with no matching [N] marker must fail, not
+    be silently fixed by appending a marker to the answer."""
+
+    payload = _payload()
+    payload["answer"] = "A maturity benefit is payable."
+    with pytest.raises(CitationValidationError, match="inline citation markers"):
+        parse_and_verify_answer(payload, [_context()])
+
+
+def test_rejects_inline_marker_without_citation_object() -> None:
+    payload = {"answer": "A maturity benefit is payable [1].", "citations": []}
+    with pytest.raises(CitationValidationError, match="inline citation markers"):
+        parse_and_verify_answer(payload, [_context()])
+
+
+def test_recovery_does_not_synthesize_citation_from_plain_text() -> None:
+    """A plain-text fallback answer with an inline [1] must not cause Python
+    to manufacture a citation object from the retrieved context."""
+
+    raw_output = (
+        "ANSWER:\nA maturity benefit is payable [1].\n"
+        "CITATIONS:\n"
+        "[1] | chunk_id: chunk_real | product: Kotak EDGE | page: 2 | "
+        "supporting_text: The maturity benefit shall be payable at the end of the policy term."
+    )
+    recovered = recover_answer_payload(raw_output, [_context()])
+    assert recovered["citations"] == []
+    with pytest.raises(CitationValidationError, match="inline citation markers"):
+        parse_and_verify_answer(recovered, [_context()])
+
+
+def test_recovers_fenced_json_with_model_produced_citation() -> None:
+    """Fenced JSON that already contains model-produced citation data is safe
+    to recover and must still pass full verification."""
+
+    raw_output = f"Sure, here is the answer:\n```json\n{json.dumps(_payload())}\n```"
+    recovered = recover_answer_payload(raw_output, [_context()])
+    answer = parse_and_verify_answer(recovered, [_context()])
+    assert answer.citations[0].chunk_id == "chunk_real"
+    assert answer.citations[0].page == 2

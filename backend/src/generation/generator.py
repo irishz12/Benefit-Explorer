@@ -147,39 +147,6 @@ class BedrockGenerator:
             f"`supporting_text`. Do not emit null, NaN, comments, or extra keys. Failure reason: {reason}"
         )
 
-    @staticmethod
-    def _plain_fallback_messages(
-        query: str,
-        context_text: str,
-        required_products: tuple[str, ...],
-    ) -> list[dict[str, str]]:
-        product_rule = (
-            "Include at least one cited claim for each of these products: "
-            + ", ".join(required_products)
-            + ". "
-            if required_products
-            else ""
-        )
-        return [
-            {
-                "role": "system",
-                "content": (
-                    "Answer only from the supplied insurance context. Do not output JSON. "
-                    "Use inline one-based context markers such as [1] immediately after each claim. "
-                    f"{product_rule}"
-                    "Use exactly this plain-text layout:\n"
-                    "ANSWER:\n<grounded answer with [N] markers>\n"
-                    "CITATIONS:\n"
-                    "[N] | chunk_id: <exact chunk_id> | product: <exact product> | "
-                    "page: <page> | supporting_text: <exact sentence from context>"
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"QUESTION:\n{query}\n\nAVAILABLE CONTEXT:\n{context_text}",
-            },
-        ]
-
     def generate(
         self,
         query: str,
@@ -336,42 +303,18 @@ class BedrockGenerator:
             except CitationValidationError as exc:
                 last_error = exc
 
-        # Structured output has been exhausted. Ask once without response_format,
-        # reconstruct the schema locally, and still apply strict verification.
+        # Structured output and citation-validation retries are exhausted, and no
+        # model-produced payload could be recovered locally. Fail safely instead of
+        # requesting a plain-text answer and manufacturing citation evidence for it.
         LOGGER.warning(
-            "Structured output retries were exhausted; using plain-text generation fallback."
+            "Structured output retries were exhausted; no verifiable answer was produced."
         )
-        fallback_content = ""
-        try:
-            fallback_content = self._create_completion(
-                messages=self._plain_fallback_messages(
-                    query,
-                    context_text,
-                    required_products,
-                ),
-            )
-        except Exception as error:
-            if not self._json_validation_error(error):
-                raise
-            fallback_content = self._failed_generation(error)
-            self._log_invalid_json(fallback_content, f"plain fallback: {error}")
-
-        recovered_payload = recover_answer_payload(fallback_content, contexts)
-        try:
-            return parse_and_verify_answer(
-                recovered_payload,
-                contexts,
-                required_products=required_products,
-            )
-        except CitationValidationError as exc:
-            last_error = exc
-
         reasons = last_error.reasons if last_error else (
-            "Structured and plain-text generation did not produce a verifiable answer",
+            "Structured generation did not produce a verifiable answer",
         )
         raise CitationValidationError(
             f"The model did not produce verifiable citations: {last_error}",
-            payload=last_error.payload if last_error else recovered_payload,
+            payload=last_error.payload if last_error else last_content,
             reasons=reasons,
             contexts=contexts,
         ) from last_error

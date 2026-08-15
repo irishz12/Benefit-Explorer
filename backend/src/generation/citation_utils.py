@@ -276,9 +276,9 @@ def parse_and_verify_answer(
         )
 
     inline_indices = {int(value) for value in _INLINE_CITATION.findall(answer)}
-    if inline_indices and inline_indices != seen_declared_indices:
+    if inline_indices != seen_declared_indices:
         errors.append(
-            f"inline citation indices {sorted(inline_indices)} do not match citation objects "
+            f"inline citation markers {sorted(inline_indices)} do not match citation objects "
             f"{sorted(seen_declared_indices)}"
         )
     deduplicated: dict[int, VerifiedCitation] = {}
@@ -286,14 +286,10 @@ def parse_and_verify_answer(
         deduplicated.setdefault(citation.index, citation)
     verified = list(deduplicated.values())
     verified_indices = {citation.index for citation in verified}
-    if not inline_indices and verified_indices:
-        markers = "".join(f"[{index}]" for index in sorted(verified_indices))
-        answer = f"{answer.rstrip()} {markers}"
-    rewritten_inline_indices = {int(value) for value in _INLINE_CITATION.findall(answer)}
-    if rewritten_inline_indices != verified_indices:
+    if inline_indices != verified_indices:
         errors.append(
-            f"canonical inline indices {sorted(rewritten_inline_indices)} do not match verified "
-            f"citations {sorted(verified_indices)}"
+            f"inline citation indices {sorted(inline_indices)} do not match verified citations "
+            f"{sorted(verified_indices)}"
         )
     insufficiency_signals = (
         "cannot determine",
@@ -347,37 +343,6 @@ def _extract_json_mapping(raw_output: str) -> Mapping[str, Any] | None:
             if isinstance(decoded, Mapping):
                 return decoded
     return None
-
-
-def _split_plain_answer(raw_output: str) -> str:
-    """Remove a trailing SOURCES/CITATIONS block from fallback output."""
-
-    cleaned = re.sub(r"```(?:text|json)?", "", raw_output, flags=re.IGNORECASE)
-    cleaned = cleaned.replace("```", "").strip()
-    answer_match = re.search(
-        r"(?:^|\n)\s*ANSWER\s*:\s*(.*?)(?=\n\s*(?:CITATIONS?|SOURCES?)\s*:|\Z)",
-        cleaned,
-        flags=re.DOTALL | re.IGNORECASE,
-    )
-    if answer_match:
-        return answer_match.group(1).strip()
-    return re.split(
-        r"\n\s*(?:CITATIONS?|SOURCES?)\s*:\s*",
-        cleaned,
-        maxsplit=1,
-        flags=re.IGNORECASE,
-    )[0].strip()
-
-
-def _claim_for_index(answer: str, index: int) -> str:
-    """Return the answer sentence nearest an inline citation marker."""
-
-    marker = f"[{index}]"
-    sentences = re.split(r"(?<=[.!?])\s+|\n+", answer)
-    for sentence in sentences:
-        if marker in sentence:
-            return _INLINE_CITATION.sub("", sentence).strip()
-    return _INLINE_CITATION.sub("", answer).strip()
 
 
 def _citation_passages(chunk_text: str) -> list[str]:
@@ -440,39 +405,17 @@ def recover_answer_payload(
     raw_output: str,
     contexts: Sequence[HybridResult],
 ) -> Mapping[str, Any]:
-    """Recover schema-like data from rejected JSON or a plain-text fallback.
+    """Recover a JSON-like object embedded in an otherwise rejected response.
 
-    Inline ``[N]`` markers are mapped to the actual numbered contexts. Supporting
-    text is selected verbatim from each referenced chunk so the result still has
-    to pass the normal strict citation and product-coverage validator.
+    Only normalizes output that already contains model-produced citation
+    object data (fenced JSON, JSON surrounded by harmless text, or a
+    Python-style mapping). Never fabricates citation objects or
+    supporting_text from the retrieved ``contexts``; a plain-text answer with
+    no recoverable object still has to pass the normal strict validator with
+    no citations, which rejects it.
     """
 
     recovered = _extract_json_mapping(raw_output)
     if recovered is not None:
         return recovered
-
-    answer = _split_plain_answer(raw_output)
-    inline_values = _INLINE_CITATION.findall(answer)
-    marker_source = answer if inline_values else raw_output
-    indices = tuple(
-        dict.fromkeys(int(value) for value in _INLINE_CITATION.findall(marker_source))
-    )
-    citations: list[dict[str, Any]] = []
-    for index in indices:
-        if index < 1 or index > len(contexts):
-            continue
-        record = contexts[index - 1].record
-        supporting_text = _best_supporting_sentence(
-            _claim_for_index(answer, index),
-            record.text,
-        )
-        citations.append(
-            {
-                "index": index,
-                "chunk_id": record.chunk_id,
-                "product": record.product_name,
-                "page": record.page_number,
-                "supporting_text": supporting_text,
-            }
-        )
-    return {"answer": answer, "citations": citations}
+    return {"answer": raw_output.strip(), "citations": []}
