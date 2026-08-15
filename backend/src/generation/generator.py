@@ -129,6 +129,10 @@ class BedrockGenerator:
                 f"[CONTEXT {index}]\n"
                 f"chunk_id: {record.chunk_id}\n"
                 f"product: {record.product_name}\n"
+                # The one canonical page a citation for this context must copy.
+                # `pages` below is informational only; it is not a valid source
+                # for the `page` field on its own.
+                f"citation_page: {record.page_number}\n"
                 f"pages: {', '.join(str(page) for page in record.page_numbers)}\n"
                 f"section: {record.section_type}\n"
                 f"source_file: {record.source_file}\n"
@@ -144,7 +148,9 @@ class BedrockGenerator:
             "suffix, or trailing comma. Use double-quoted JSON strings and escape every newline and "
             "quotation mark inside strings. The root must contain only `answer` and `citations`. "
             "Every citation must contain exactly `index`, `chunk_id`, `product`, `page`, and "
-            f"`supporting_text`. Do not emit null, NaN, comments, or extra keys. Failure reason: {reason}"
+            "`supporting_text`. `page` must equal that context's own `citation_page` value, "
+            "never the citation `index`. Do not emit null, NaN, comments, or extra keys. "
+            f"Failure reason: {reason}"
         )
 
     def generate(
@@ -192,11 +198,14 @@ class BedrockGenerator:
                     "at least one citation to a chunk whose product metadata matches that product. "
                     "Context and citation indices are strictly one-based: "
                     "never use index 0. Each citation object must use the same numbered context, "
-                    "its exact chunk_id and product, one page listed for that context, and a short "
-                    "verbatim supporting sentence copied from its text. Return only the required JSON. "
+                    "its exact chunk_id and product, and a short verbatim supporting sentence copied "
+                    "from its text. The `page` field must be copied exactly from that context's own "
+                    "`citation_page` value — never guess it, and never confuse it with the citation "
+                    "`index`. For example, if [CONTEXT 3] lists `citation_page: 2`, a citation with "
+                    '"index": 3 must use "page": 2, not 3 and not 1. Return only the required JSON. '
                     "The exact shape is: "
                     '{"answer":"claim [1]","citations":[{"index":1,"chunk_id":"...",'
-                    '"product":"...","page":1,"supporting_text":"exact quote"}]}. '
+                    '"product":"...","page":6,"supporting_text":"exact quote"}]}. '
                     "Use double quotes, escape characters inside strings, and include no Markdown, "
                     "comments, trailing commas, prefixes, suffixes, nulls, or additional keys."
                 ),
@@ -284,6 +293,8 @@ class BedrockGenerator:
                                 "The JSON syntax was valid, but strict citation verification failed. "
                                 "Correct every listed issue using only the same contexts, then return "
                                 "exactly one schema-compliant JSON object with no surrounding text. "
+                                "Remember: each citation's `page` must equal that context's own "
+                                "`citation_page` value, never the citation `index`. "
                                 f"Validation issues: {exc}"
                             ),
                         },
