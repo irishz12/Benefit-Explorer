@@ -245,6 +245,7 @@ _INTENT_RULES = (
             "early surrender",
             "withdrawal restrictions",
             "surrender or withdrawal restrictions",
+            "get money out",
         ),
         ("Surrender",),
         ("Policy Terms", "Premiums"),

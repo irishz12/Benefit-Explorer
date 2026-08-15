@@ -125,3 +125,24 @@ def test_system_prompt_states_the_citation_page_rule() -> None:
     system_message = client.chat.completions.last_messages[0]["content"]
     assert "citation_page" in system_message
     assert "never confuse it with the citation" in system_message
+
+
+def test_system_prompt_forbids_trailing_prose_after_the_json() -> None:
+    """Q015 emitted a valid JSON object followed by explanatory prose. The prompt
+    must explicitly forbid anything after the closing brace so the extra text
+    does not appear in the first place."""
+
+    valid_response = (
+        '{"answer": "A maturity benefit is payable [1].", '
+        '"citations": [{"index": 1, "chunk_id": "chunk_real", "product": "Kotak EDGE", '
+        '"page": 2, "supporting_text": '
+        '"The maturity benefit shall be payable at the end of the policy term."}]}'
+    )
+    client = _RecordingClient([valid_response])
+    generator = BedrockGenerator(model="test-model", client=client)
+
+    generator.generate("What is the maturity benefit?", [_context()])
+
+    system_message = client.chat.completions.last_messages[0]["content"]
+    assert "nothing after the" in system_message
+    assert "closing brace" in system_message

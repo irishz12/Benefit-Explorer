@@ -1,6 +1,18 @@
 from __future__ import annotations
 
-from src.generation.ranking_signals import lexical_similarity
+from src.generation.ranking_signals import detect_query_intent, lexical_similarity
+
+
+def test_get_money_out_maps_to_early_restriction_intent() -> None:
+    """Q008 asks to "get money out" during the lock-in. That must resolve to the
+    surrender/withdrawal-restriction intent so surrender-and-lock-in chunks are
+    preferred over a generic brochure page — the root cause of the wrong answer."""
+
+    intent = detect_query_intent(
+        "Can I get money out of Kotak TULIP during the first five policy years?"
+    )
+    assert intent.name == "early_restriction"
+    assert "Surrender" in intent.preferred_sections
 
 
 def test_lexical_similarity_scores_near_identical_text_high() -> None:

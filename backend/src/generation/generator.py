@@ -145,12 +145,13 @@ class BedrockGenerator:
         return (
             "Your previous response failed JSON validation. Generate the answer again from scratch. "
             "Return exactly one JSON object and nothing else: no Markdown fence, commentary, prefix, "
-            "suffix, or trailing comma. Use double-quoted JSON strings and escape every newline and "
-            "quotation mark inside strings. The root must contain only `answer` and `citations`. "
-            "Every citation must contain exactly `index`, `chunk_id`, `product`, `page`, and "
-            "`supporting_text`. `page` must equal that context's own `citation_page` value, "
-            "never the citation `index`. Do not emit null, NaN, comments, or extra keys. "
-            f"Failure reason: {reason}"
+            "suffix, or trailing comma, and nothing after the closing brace — not an explanation, "
+            "not an apology, not a note about what you corrected. Use double-quoted JSON strings and "
+            "escape every newline and quotation mark inside strings. The root must contain only "
+            "`answer` and `citations`. Every citation must contain exactly `index`, `chunk_id`, "
+            "`product`, `page`, and `supporting_text`. `page` must equal that context's own "
+            "`citation_page` value, never the citation `index`. Do not emit null, NaN, comments, or "
+            f"extra keys. Failure reason: {reason}"
         )
 
     def generate(
@@ -202,7 +203,9 @@ class BedrockGenerator:
                     "from its text. The `page` field must be copied exactly from that context's own "
                     "`citation_page` value — never guess it, and never confuse it with the citation "
                     "`index`. For example, if [CONTEXT 3] lists `citation_page: 2`, a citation with "
-                    '"index": 3 must use "page": 2, not 3 and not 1. Return only the required JSON. '
+                    '"index": 3 must use "page": 2, not 3 and not 1. Return exactly one JSON object '
+                    "and nothing else: nothing before the opening brace and nothing after the "
+                    "closing brace — no explanation, apology, or note about corrected citations. "
                     "The exact shape is: "
                     '{"answer":"claim [1]","citations":[{"index":1,"chunk_id":"...",'
                     '"product":"...","page":6,"supporting_text":"exact quote"}]}. '
