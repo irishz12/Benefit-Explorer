@@ -9,9 +9,30 @@ application. It generates fresh RAG answers and reports exactly three metrics:
    group, so duplicate ingestion windows do not make perfect recall impossible.
 3. Answer Correctness — official `ragas.metrics.answer_correctness`
 
-The RAGAS judge uses the Bedrock Mantle endpoint and credentials configured in
-`backend/.env`. Set `RAGAS_JUDGE_MODEL` there to use a judge model different
-from the answer-generation model.
+Faithfulness and Answer Correctness use RAGAS; Context Recall@4 is computed
+against the manually labelled evidence groups. The RAGAS judge uses the Bedrock
+Mantle endpoint and credentials configured in `backend/.env`. Set
+`RAGAS_JUDGE_MODEL` there to use a judge model different from the
+answer-generation model.
+
+## Final results
+
+The benchmark contains 30 insurance QA questions across six products. The final
+run used the judge model `openai.gpt-oss-120b`.
+
+| Metric | Score |
+|---|---:|
+| Faithfulness | 0.848 |
+| Context Recall@4 | 0.878 |
+| Answer Correctness | 0.748 |
+
+Coverage: 26 of 30 questions evaluated, 4 pipeline failures, 5 questions with a
+RAGAS judge error. Each metric is averaged only over the questions where it was
+produced; failed and judge-error questions are not scored as zero.
+
+The golden evidence labels were re-mapped to the current active chunk boundaries
+before this run. The previously published scores used an older chunking/index
+snapshot, so the two are not a strict apples-to-apples comparison.
 
 ## Install
 
