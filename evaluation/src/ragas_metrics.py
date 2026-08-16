@@ -8,10 +8,11 @@ import os
 from dataclasses import dataclass
 from typing import Any, Sequence
 
+import instructor
 from openai import OpenAI
 from ragas.dataset_schema import SingleTurnSample
 from ragas.embeddings.base import BaseRagasEmbeddings
-from ragas.llms import llm_factory
+from ragas.llms.base import InstructorLLM, InstructorModelArgs
 from ragas.metrics import answer_correctness, faithfulness
 from ragas.run_config import RunConfig
 
@@ -57,13 +58,20 @@ class RagasEvaluator:
     ) -> None:
         run_config = RunConfig(timeout=timeout, max_retries=2)
         client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
-        judge_llm = llm_factory(
-            model,
+        # The Bedrock Mantle endpoint for this judge is incompatible with forced
+        # json_object/json_schema response_format (it emits invalid JSON), so we
+        # use instructor Mode.MD_JSON, which avoids response_format while keeping
+        # instructor's Pydantic structured validation. RAGAS's llm_factory hardcodes
+        # Mode.JSON for provider="openai", so we build InstructorLLM directly.
+        patched_client = instructor.from_openai(client, mode=instructor.Mode.MD_JSON)
+        judge_llm = InstructorLLM(
+            client=patched_client,
+            model=model,
             provider="openai",
-            client=client,
-            adapter="instructor",
-            temperature=0.0,
-            max_tokens=int(os.getenv("RAGAS_MAX_OUTPUT_TOKENS", "1800")),
+            model_args=InstructorModelArgs(
+                temperature=0.0,
+                max_tokens=int(os.getenv("RAGAS_MAX_OUTPUT_TOKENS", "1800")),
+            ),
         )
         ragas_embeddings = BGERagasEmbeddings(embedder, run_config)
 
