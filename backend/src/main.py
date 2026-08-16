@@ -25,12 +25,18 @@ from src.retrieval.vector_store import ChromaVectorStore
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CHROMA = BACKEND_DIR / "data" / "chroma_db"
-DEFAULT_MANTLE_MODEL = "qwen.qwen3-32b"
+DEFAULT_MANTLE_MODEL = "qwen.qwen3-next-80b-a3b-instruct"
 DEFAULT_AWS_REGION = "us-east-1"
 # The backend's private environment file is authoritative. This prevents a
 # stale shell/session Bedrock token from silently shadowing the configured key.
 load_dotenv(BACKEND_DIR / ".env", override=True)
 LOGGER = logging.getLogger(__name__)
+
+
+def _optional_device(env_var: str) -> str | None:
+    """Read a torch device override; blank/unset keeps automatic device selection."""
+
+    return os.getenv(env_var, "").strip() or None
 
 
 class ChatRequest(BaseModel):
@@ -58,8 +64,11 @@ class ChatResponse(BaseModel):
 def get_rag_components() -> tuple[HybridRetriever, BGEReranker]:
     """Load the large local retrieval and reranking models once."""
 
+    embedding_device = _optional_device("EMBEDDING_DEVICE")
+    reranker_device = _optional_device("RERANKER_DEVICE")
     embedder = BGEEmbedder(
         model_name=os.getenv("EMBEDDING_MODEL", DEFAULT_MODEL),
+        device=embedding_device,
         offline=os.getenv("RAG_OFFLINE", "true").casefold() == "true",
         show_progress=False,
     )
@@ -76,7 +85,9 @@ def get_rag_components() -> tuple[HybridRetriever, BGEReranker]:
     )
     reranker = BGEReranker(
         model_name=os.getenv("RERANKER_MODEL", DEFAULT_RERANKER_MODEL),
+        device=reranker_device,
         offline=os.getenv("RAG_OFFLINE", "true").casefold() == "true",
+        batch_size=int(os.getenv("RERANKER_BATCH_SIZE", "8")),
         focus_embedder=embedder,
         product_match_boost=0.35,
         show_progress=False,

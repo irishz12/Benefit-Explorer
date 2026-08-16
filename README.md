@@ -148,22 +148,27 @@ the policy is in force and all premiums are current [2].
 
 ## Evaluation results
 
-The final evaluation set contains **30 questions across six insurance
-products**. Answers were assessed using exactly three metrics.
+The benchmark contains **30 insurance QA questions across six products**.
+Faithfulness and Answer Correctness are computed with RAGAS; Context Recall@4 is
+computed against the manually labelled evidence groups. The RAGAS judge is
+`openai.gpt-oss-120b`.
 
 | Metric | Score |
 |---|---:|
-| Faithfulness (RAGAS) | **0.936** |
-| Context Recall@4 (legacy flat chunk labels) | **0.837** |
-| Answer Correctness (RAGAS) | **0.725** |
+| Faithfulness (RAGAS) | **0.848** |
+| Context Recall@4 (evidence groups) | **0.878** |
+| Answer Correctness (RAGAS) | **0.748** |
 
-Faithfulness and Answer Correctness were available for 29 questions because
-one prior RAGAS judge request failed; Context Recall@4 was available for all 30.
-The evaluation code now uses evidence-group recall so overlapping chunks count
-as alternatives rather than separate required hits. The historical `0.837`
-recall value predates that correction and must be recalculated on the next full
-run; it is retained only for transparent comparison. These results should not
-be treated as a universal benchmark.
+Coverage for this run: 26 of 30 questions were evaluated end to end, 4 questions
+failed in the pipeline, and 5 questions returned a RAGAS judge error. Metrics
+are averaged only over the questions where each score was produced; failed and
+judge-error questions are not counted as zero.
+
+The golden evidence labels were re-mapped to the current active chunk boundaries
+before this run, whereas the previously published scores used an older
+chunking/index snapshot. The two sets of numbers are therefore not a strict
+apples-to-apples comparison and should not be read as a percentage improvement.
+These results are not a universal benchmark.
 
 ## Supported brochure set
 

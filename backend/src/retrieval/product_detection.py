@@ -30,13 +30,23 @@ class ProductDetector:
         ),
         (
             "gen2gen",
-            ("kotak gen2gen protect", "gen2gen protect", "gen2gen", "gen 2 gen"),
+            (
+                "kotak gen2gen protect",
+                "gen2gen protect",
+                "gen2gen",
+                "gen 2 gen",
+                # Legacy ROP is a distinctive named feature unique to this
+                # product (see the "named_feature" ranking intent).
+                "legacy rop",
+            ),
         ),
         ("tulip", ("kotak tulip", "tulip", "t u l i p")),
         ("edge", ("kotak edge", "edge")),
         # "gain" is common English. Requiring the brand-qualified name avoids
         # routing ordinary phrases such as "gain better value" to this product.
-        ("gain", ("kotak gain",)),
+        # "premium saver" is safe to add unqualified: it is a distinctive named
+        # option exclusive to Kotak GAIN, not a generic English phrase.
+        ("gain", ("kotak gain", "premium saver")),
     )
 
     def __init__(self, product_names: Iterable[str]) -> None:

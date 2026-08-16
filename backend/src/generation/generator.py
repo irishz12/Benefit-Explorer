@@ -129,6 +129,10 @@ class BedrockGenerator:
                 f"[CONTEXT {index}]\n"
                 f"chunk_id: {record.chunk_id}\n"
                 f"product: {record.product_name}\n"
+                # The one canonical page a citation for this context must copy.
+                # `pages` below is informational only; it is not a valid source
+                # for the `page` field on its own.
+                f"citation_page: {record.page_number}\n"
                 f"pages: {', '.join(str(page) for page in record.page_numbers)}\n"
                 f"section: {record.section_type}\n"
                 f"source_file: {record.source_file}\n"
@@ -141,44 +145,14 @@ class BedrockGenerator:
         return (
             "Your previous response failed JSON validation. Generate the answer again from scratch. "
             "Return exactly one JSON object and nothing else: no Markdown fence, commentary, prefix, "
-            "suffix, or trailing comma. Use double-quoted JSON strings and escape every newline and "
-            "quotation mark inside strings. The root must contain only `answer` and `citations`. "
-            "Every citation must contain exactly `index`, `chunk_id`, `product`, `page`, and "
-            f"`supporting_text`. Do not emit null, NaN, comments, or extra keys. Failure reason: {reason}"
+            "suffix, or trailing comma, and nothing after the closing brace — not an explanation, "
+            "not an apology, not a note about what you corrected. Use double-quoted JSON strings and "
+            "escape every newline and quotation mark inside strings. The root must contain only "
+            "`answer` and `citations`. Every citation must contain exactly `index`, `chunk_id`, "
+            "`product`, `page`, and `supporting_text`. `page` must equal that context's own "
+            "`citation_page` value, never the citation `index`. Do not emit null, NaN, comments, or "
+            f"extra keys. Failure reason: {reason}"
         )
-
-    @staticmethod
-    def _plain_fallback_messages(
-        query: str,
-        context_text: str,
-        required_products: tuple[str, ...],
-    ) -> list[dict[str, str]]:
-        product_rule = (
-            "Include at least one cited claim for each of these products: "
-            + ", ".join(required_products)
-            + ". "
-            if required_products
-            else ""
-        )
-        return [
-            {
-                "role": "system",
-                "content": (
-                    "Answer only from the supplied insurance context. Do not output JSON. "
-                    "Use inline one-based context markers such as [1] immediately after each claim. "
-                    f"{product_rule}"
-                    "Use exactly this plain-text layout:\n"
-                    "ANSWER:\n<grounded answer with [N] markers>\n"
-                    "CITATIONS:\n"
-                    "[N] | chunk_id: <exact chunk_id> | product: <exact product> | "
-                    "page: <page> | supporting_text: <exact sentence from context>"
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"QUESTION:\n{query}\n\nAVAILABLE CONTEXT:\n{context_text}",
-            },
-        ]
 
     def generate(
         self,
@@ -225,11 +199,16 @@ class BedrockGenerator:
                     "at least one citation to a chunk whose product metadata matches that product. "
                     "Context and citation indices are strictly one-based: "
                     "never use index 0. Each citation object must use the same numbered context, "
-                    "its exact chunk_id and product, one page listed for that context, and a short "
-                    "verbatim supporting sentence copied from its text. Return only the required JSON. "
+                    "its exact chunk_id and product, and a short verbatim supporting sentence copied "
+                    "from its text. The `page` field must be copied exactly from that context's own "
+                    "`citation_page` value — never guess it, and never confuse it with the citation "
+                    "`index`. For example, if [CONTEXT 3] lists `citation_page: 2`, a citation with "
+                    '"index": 3 must use "page": 2, not 3 and not 1. Return exactly one JSON object '
+                    "and nothing else: nothing before the opening brace and nothing after the "
+                    "closing brace — no explanation, apology, or note about corrected citations. "
                     "The exact shape is: "
                     '{"answer":"claim [1]","citations":[{"index":1,"chunk_id":"...",'
-                    '"product":"...","page":1,"supporting_text":"exact quote"}]}. '
+                    '"product":"...","page":6,"supporting_text":"exact quote"}]}. '
                     "Use double quotes, escape characters inside strings, and include no Markdown, "
                     "comments, trailing commas, prefixes, suffixes, nulls, or additional keys."
                 ),
@@ -317,6 +296,8 @@ class BedrockGenerator:
                                 "The JSON syntax was valid, but strict citation verification failed. "
                                 "Correct every listed issue using only the same contexts, then return "
                                 "exactly one schema-compliant JSON object with no surrounding text. "
+                                "Remember: each citation's `page` must equal that context's own "
+                                "`citation_page` value, never the citation `index`. "
                                 f"Validation issues: {exc}"
                             ),
                         },
@@ -336,42 +317,18 @@ class BedrockGenerator:
             except CitationValidationError as exc:
                 last_error = exc
 
-        # Structured output has been exhausted. Ask once without response_format,
-        # reconstruct the schema locally, and still apply strict verification.
+        # Structured output and citation-validation retries are exhausted, and no
+        # model-produced payload could be recovered locally. Fail safely instead of
+        # requesting a plain-text answer and manufacturing citation evidence for it.
         LOGGER.warning(
-            "Structured output retries were exhausted; using plain-text generation fallback."
+            "Structured output retries were exhausted; no verifiable answer was produced."
         )
-        fallback_content = ""
-        try:
-            fallback_content = self._create_completion(
-                messages=self._plain_fallback_messages(
-                    query,
-                    context_text,
-                    required_products,
-                ),
-            )
-        except Exception as error:
-            if not self._json_validation_error(error):
-                raise
-            fallback_content = self._failed_generation(error)
-            self._log_invalid_json(fallback_content, f"plain fallback: {error}")
-
-        recovered_payload = recover_answer_payload(fallback_content, contexts)
-        try:
-            return parse_and_verify_answer(
-                recovered_payload,
-                contexts,
-                required_products=required_products,
-            )
-        except CitationValidationError as exc:
-            last_error = exc
-
         reasons = last_error.reasons if last_error else (
-            "Structured and plain-text generation did not produce a verifiable answer",
+            "Structured generation did not produce a verifiable answer",
         )
         raise CitationValidationError(
             f"The model did not produce verifiable citations: {last_error}",
-            payload=last_error.payload if last_error else recovered_payload,
+            payload=last_error.payload if last_error else last_content,
             reasons=reasons,
             contexts=contexts,
         ) from last_error

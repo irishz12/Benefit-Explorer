@@ -18,6 +18,7 @@ from .ranking_signals import (
     detect_query_intent,
     exact_match_score,
     intent_anchor_score,
+    lexical_similarity,
     section_adjustment,
     select_focused_windows,
 )
@@ -44,6 +45,7 @@ class RerankingSignalConfig:
     intent_anchor_boost: float = 0.18
     lexical_candidates_per_chunk: int = 3
     window_semantic_weight: float = 0.65
+    use_semantic_focused_windows: bool = False
     near_duplicate_threshold: float = 0.88
     score_cliff_gap: float = 0.22
     score_cliff_unsupported_single_gap: float = 0.20
@@ -94,7 +96,7 @@ class BGEReranker:
         self,
         model_name: str = DEFAULT_RERANKER_MODEL,
         device: str | None = None,
-        batch_size: int = 2,
+        batch_size: int = 8,
         cache_dir: Path | None = None,
         offline: bool = False,
         show_progress: bool = False,
@@ -178,11 +180,15 @@ class BGEReranker:
         scoring_query = (rerank_query or query).strip()
         config = self.signal_config
         intent = detect_query_intent(scoring_query)
+        # Lexical scoring (token coverage, phrase, intent anchors) already picks a
+        # strong focused window on its own. Semantic window embeddings are an
+        # expensive optional refinement, off by default for runtime latency.
+        window_embedder = self.focus_embedder if config.use_semantic_focused_windows else None
         focused_windows = select_focused_windows(
             scoring_query,
             [candidate.record.text for candidate in candidates],
             intent,
-            self.focus_embedder,
+            window_embedder,
             lexical_candidates_per_chunk=config.lexical_candidates_per_chunk,
             semantic_weight=config.window_semantic_weight,
         )
@@ -290,34 +296,23 @@ class BGEReranker:
         self,
         ranked: list[HybridResult],
     ) -> list[HybridResult]:
-        """Drop lower-ranked chunks with cosine similarity above the threshold."""
+        """Drop lower-ranked chunks whose text is a near-duplicate of a kept chunk.
+
+        Overlapping brochure chunks are caught with a cheap lexical similarity
+        check (no embedding forward pass), so this runs over every reranked
+        candidate at negligible cost.
+        """
 
         config = self.signal_config
-        if (
-            self.focus_embedder is None
-            or len(ranked) < 2
-        ):
+        if len(ranked) < 2:
             return ranked
-        vectors = np.asarray(
-            self.focus_embedder.embed_documents(
-                [result.record.text for result in ranked]
-            ),
-            dtype=float,
-        )
-        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-        vectors = vectors / np.where(norms == 0.0, 1.0, norms)
         kept: list[HybridResult] = []
-        kept_vectors: list[np.ndarray] = []
-        for result, vector in zip(ranked, vectors, strict=True):
+        for result in ranked:
             duplicate_of = next(
                 (
                     kept_result
-                    for kept_result, kept_vector in zip(
-                        kept,
-                        kept_vectors,
-                        strict=True,
-                    )
-                    if float(np.dot(vector, kept_vector))
+                    for kept_result in kept
+                    if lexical_similarity(result.record.text, kept_result.record.text)
                     > config.near_duplicate_threshold
                 ),
                 None,
@@ -331,7 +326,6 @@ class BGEReranker:
                 )
                 continue
             kept.append(result)
-            kept_vectors.append(vector)
         return kept
 
     def _apply_score_cliff(

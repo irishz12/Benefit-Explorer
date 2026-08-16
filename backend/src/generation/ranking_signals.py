@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from typing import Iterable, Sequence
 
 import numpy as np
@@ -244,6 +245,7 @@ _INTENT_RULES = (
             "early surrender",
             "withdrawal restrictions",
             "surrender or withdrawal restrictions",
+            "get money out",
         ),
         ("Surrender",),
         ("Policy Terms", "Premiums"),
@@ -574,6 +576,17 @@ def exact_match_score(query: str, text: str, intent: QueryIntent) -> float:
         + 0.20 * number_coverage
         + 0.20 * calculation_anchor,
     )
+
+
+def lexical_similarity(a: str, b: str) -> float:
+    """Cheap, deterministic near-duplicate signal between two chunk texts.
+
+    Overlapping brochure chunks (recursive-chunking windows, repeated clauses
+    across sections) share most of their normalized token sequence. Comparing
+    that sequence directly avoids an embedding forward pass per candidate.
+    """
+
+    return SequenceMatcher(None, normalize_text(a), normalize_text(b)).ratio()
 
 
 def _split_long_unit(unit: str, max_tokens: int, overlap_tokens: int) -> list[str]:

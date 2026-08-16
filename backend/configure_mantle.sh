@@ -37,7 +37,7 @@ fi
   printf "AWS_BEARER_TOKEN_BEDROCK=%s\n" "${BEDROCK_KEY}"
   printf "AWS_REGION=us-east-1\n"
   printf "OPENAI_BASE_URL=https://bedrock-mantle.us-east-1.api.aws/v1\n"
-  printf "MANTLE_MODEL=qwen.qwen3-32b\n"
+  printf "MANTLE_MODEL=qwen.qwen3-next-80b-a3b-instruct\n"
   printf "MANTLE_MAX_OUTPUT_TOKENS=1100\n"
 } >> "${TEMP_ENV}"
 
