@@ -65,7 +65,7 @@ grounding problem, from document ingestion through citation validation.
 - BGE cross-encoder reranking with intent, section, exact-phrase, and focused-window signals
 - Near-duplicate removal and dynamic final-context selection
 - Product-balanced evidence selection for comparison questions
-- Grounded Qwen3 32B generation through Amazon Bedrock Mantle
+- Grounded Qwen3-Next-80B-A3B-Instruct generation through Amazon Bedrock Mantle
 - Strict inline citation validation against retrieved brochure text
 - Streaming FastAPI and Next.js chat experience with expandable source cards
 - RAGAS evaluation with a manually labeled golden dataset
@@ -79,7 +79,7 @@ flowchart LR
     Q["Customer question"] --> D["Product and intent detection"]
     D --> C
     C --> E["Multi-signal reranking<br/>cross-encoder + intent + exact phrase"]
-    E --> F["Grounded generation<br/>Qwen3 32B via Bedrock Mantle"]
+    E --> F["Grounded generation<br/>Qwen3-Next-80B-A3B-Instruct via Bedrock Mantle"]
     F --> G["Citation verification<br/>chunk identity + supporting text"]
     G --> H["Streaming chat UI<br/>inline citations + source cards"]
 ```
@@ -140,7 +140,7 @@ the policy is in force and all premiums are current [2].
 | Vector database | Chroma |
 | Rank fusion | Reciprocal Rank Fusion |
 | Reranking | `BAAI/bge-reranker-v2-m3` |
-| Generation | Qwen3 32B through Amazon Bedrock Mantle |
+| Generation | Qwen3-Next-80B-A3B-Instruct through Amazon Bedrock Mantle |
 | Backend | Python, FastAPI, Pydantic, Uvicorn |
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui primitives |
 | Streaming | NDJSON through a server-side Next.js proxy |
@@ -361,7 +361,7 @@ usable evidence. See `evaluation/golden/LABELING.md` for the labeling policy.
 | `AWS_BEARER_TOKEN_BEDROCK` | Required | Server-side Mantle credential |
 | `AWS_REGION` | `us-east-1` | Mantle region |
 | `OPENAI_BASE_URL` | Regional Mantle URL | OpenAI-compatible endpoint |
-| `MANTLE_MODEL` | `qwen.qwen3-32b` | Generation model |
+| `MANTLE_MODEL` | `qwen.qwen3-next-80b-a3b-instruct` | Generation model |
 | `MANTLE_MAX_OUTPUT_TOKENS` | `1100` | Generation output limit |
 | `EMBEDDING_MODEL` | `BAAI/bge-m3` | Dense embedding model |
 | `RERANKER_MODEL` | `BAAI/bge-reranker-v2-m3` | Cross-encoder model |
@@ -369,7 +369,7 @@ usable evidence. See `evaluation/golden/LABELING.md` for the labeling policy.
 | `CHROMA_COLLECTION` | `insurance_products` | Chroma collection name |
 | `RAG_OFFLINE` | `true` | Require cached local retrieval models |
 | `FRONTEND_ORIGINS` | `http://localhost:3000` | Allowed browser origins |
-| `RAGAS_JUDGE_MODEL` | Generation model | Optional evaluation judge override |
+| `RAGAS_JUDGE_MODEL` | `openai.gpt-oss-120b` | Evaluation judge model |
 
 ### Frontend
 
