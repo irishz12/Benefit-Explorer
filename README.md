@@ -67,7 +67,7 @@ grounding problem, from document ingestion through citation validation.
 - Product-balanced evidence selection for comparison questions
 - Grounded Qwen3-Next-80B-A3B-Instruct generation through Amazon Bedrock Mantle
 - Strict inline citation validation against retrieved brochure text
-- Streaming FastAPI and Next.js chat experience with expandable source cards
+- Incremental NDJSON response streaming after citation verification, served via FastAPI and Next.js, with expandable source cards
 - RAGAS evaluation with a manually labeled golden dataset
 
 ## Architecture overview
@@ -81,7 +81,7 @@ flowchart LR
     C --> E["Multi-signal reranking<br/>cross-encoder + intent + exact phrase"]
     E --> F["Grounded generation<br/>Qwen3-Next-80B-A3B-Instruct via Bedrock Mantle"]
     F --> G["Citation verification<br/>chunk identity + supporting text"]
-    G --> H["Streaming chat UI<br/>inline citations + source cards"]
+    G --> H["Incremental NDJSON streaming<br/>inline citations + source cards"]
 ```
 
 The production pipeline retrieves up to 40 candidates and dynamically selects
@@ -143,7 +143,7 @@ the policy is in force and all premiums are current [2].
 | Generation | Qwen3-Next-80B-A3B-Instruct through Amazon Bedrock Mantle |
 | Backend | Python, FastAPI, Pydantic, Uvicorn |
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui primitives |
-| Streaming | NDJSON through a server-side Next.js proxy |
+| Streaming | Incremental NDJSON response streaming after citation verification, through a server-side Next.js proxy |
 | Evaluation | RAGAS plus deterministic Context Recall@4 |
 
 ## Evaluation results
