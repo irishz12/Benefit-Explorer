@@ -4,15 +4,36 @@ PyMuPDF==1.26.7
 pdfplumber==0.11.9
 tiktoken==0.12.0
 sentence-transformers==5.2.2
+# CVE-2026-45829 (GHSA-f4j7-r4q5-qw2c, critical) targets the standalone Chroma
+# server's /api/v2/.../collections endpoint with trust_remote_code=true. This
+# app only uses chromadb.PersistentClient (embedded, in-process, file-backed
+# storage in backend/src/retrieval/vector_store.py) and never runs the Chroma
+# HTTP server, so that endpoint is never exposed. No patched release exists
+# yet (fixed range starts above the current PyPI latest, 1.5.9). Keep pinned
+# and re-check when a fix ships.
 chromadb==1.5.5
 rank-bm25==0.2.2
 numpy==2.4.2
 openai==2.54.0
 python-dotenv==1.2.2
-fastapi==0.129.0
+# starlette pinned explicitly (transitive via fastapi) to close 5 PYSEC
+# advisories (host-header/path spoofing, form-parsing DoS, Windows UNC SSRF,
+# method-dispatch bypass); 1.3.1 is the lowest version fixing all of them.
+# fastapi 0.133.0 is the smallest bump that allows starlette>=1.0 (0.129.0
+# capped it at <1.0.0).
+fastapi==0.133.0
+starlette==1.3.1
 uvicorn==0.41.0
 
 # Evaluation compatibility and transitive requirements required by RAGAS.
+# CVE-2026-6587 (GHSA-95ww-475f-pr4f, low) is SSRF in
+# ragas.metrics.collections.multi_modal_faithfulness.util, reachable only
+# through that specific multi-modal metric. evaluation/src/ragas_metrics.py
+# only uses ragas.metrics.answer_correctness and ragas.metrics.faithfulness
+# (standard single-turn text metrics) against a fixed offline golden
+# dataset; the multi-modal module is never imported. No patched release
+# exists yet (fixed range starts above the current PyPI latest, 0.4.3). Keep
+# pinned and re-check when a fix ships.
 ragas==0.4.3
 langchain-community==0.3.31
 langchain-openai==1.4.3
